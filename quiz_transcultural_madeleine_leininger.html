@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quiz Transcultural: Madeleine Leininger</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Fredoka -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- QRCode.js for easy mobile join -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Canvas Confetti for Podium -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top left, #1e1b4b, #0f172a 60%, #064e3b);
+            min-height: 100vh;
+            color: #ffffff;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        .font-display {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        /* Estilo 3D dos botões Kahoot */
+        .kahoot-btn {
+            transition: transform 0.1s ease, filter 0.15s ease, box-shadow 0.1s ease;
+            position: relative;
+        }
+        .kahoot-btn:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35) !important;
+        }
+        .kahoot-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .btn-red {
+            background-color: #e21b3c;
+            box-shadow: 0 6px 0 #9f122a;
+        }
+        .btn-red:hover:not(:disabled) { filter: brightness(1.08); }
+
+        .btn-blue {
+            background-color: #1368ce;
+            box-shadow: 0 6px 0 #0c468c;
+        }
+        .btn-blue:hover:not(:disabled) { filter: brightness(1.08); }
+
+        .btn-yellow {
+            background-color: #d89e00;
+            box-shadow: 0 6px 0 #966e00;
+        }
+        .btn-yellow:hover:not(:disabled) { filter: brightness(1.08); }
+
+        .btn-green {
+            background-color: #26890c;
+            box-shadow: 0 6px 0 #195c08;
+        }
+        .btn-green:hover:not(:disabled) { filter: brightness(1.08); }
+
+        /* Animações suaves */
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.85) translateY(15px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-pop {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes pulseTimer {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.12); }
+        }
+        .timer-urgent {
+            animation: pulseTimer 0.6s infinite;
+            background-color: #ef4444 !important;
+        }
+
+        /* Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 10px; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Barra Superior Global -->
+    <header class="w-full px-4 py-3 flex items-center justify-between border-b border-white/10 bg-slate-950/40 backdrop-blur-md sticky top-0 z-40">
+        <div class="flex items-center gap-3 cursor-pointer" onclick="confirmReturnHome()">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg text-slate-950 font-bold text-xl">
+                <i class="fa-solid fa-user-nurse"></i>
+            </div>
+            <div>
+                <h1 class="font-display font-bold text-base sm:text-lg leading-tight tracking-wide text-white">
+                    Leininger<span class="text-emerald-400">Quiz</span>
+                </h1>
+                <p class="text-[11px] text-slate-300 hidden sm:block">Teoria do Cuidado Transcultural • 25 Questões</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Badge de Status da Sala (visível quando ativo) -->
+            <div id="header-room-badge" class="hidden items-center gap-2 bg-indigo-600/40 border border-indigo-400/40 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>PIN: <strong id="header-pin-text" class="tracking-widest text-emerald-300">------</strong></span>
+            </div>
+
+            <!-- Botão de Som -->
+            <button id="btn-sound-toggle" onclick="toggleSound()" class="p-2.5 rounded-xl glass-card hover:bg-white/15 transition text-slate-200" title="Alternar Efeitos Sonoros">
+                <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+            </button>
+
+            <!-- Botão Baixar Arquivo HTML (útil para compartilhar/apresentar offline) -->
+            <button onclick="downloadSelfHTML()" class="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl glass-card hover:bg-white/15 transition text-xs font-medium text-emerald-300" title="Baixar este jogo em arquivo HTML único">
+                <i class="fa-solid fa-download"></i>
+                <span>Baixar HTML</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Toast / Notificação Customizada (Substitui alert()) -->
+    <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-md pointer-events-none"></div>
+
+    <!-- Modal de Confirmação Customizado (Substitui confirm()) -->
+    <div id="custom-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-card bg-slate-900/95 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-white/20 animate-pop text-center">
+            <div class="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fa-solid fa-circle-question"></i>
+            </div>
+            <h3 id="modal-title" class="font-display text-xl font-bold mb-2">Confirmar ação</h3>
+            <p id="modal-message" class="text-slate-300 text-sm mb-6">Deseja realmente voltar ao menu inicial?</p>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 font-semibold text-sm transition">Cancelar</button>
+                <button id="modal-confirm-btn" class="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 w-full max-w-6xl mx-auto">
+
+        <!-- ========================================================= -->
+        <!-- TELA 1: MENU INICIAL                                      -->
+        <!-- ========================================================= -->
+        <section id="view-home" class="w-full max-w-4xl animate-pop">
+            <div class="text-center mb-8 sm:mb-10">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-semibold mb-4">
+                    <i class="fa-solid fa-stethoscope"></i>
+                    <span>Enfermagem & Antropologia • Quiz Interativo</span>
+                </div>
+                <h2 class="font-display text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white via-emerald-200 to-teal-300 bg-clip-text text-transparent">
+                    Madeleine Leininger
+                </h2>
+                <p class="text-slate-300 text-sm sm:text-lg max-w-2xl mx-auto leading-relaxed">
+                    Teste seus conhecimentos sobre a <strong>Teoria da Diversidade e Universalidade do Cuidado Cultural</strong> em tempo real com toda a turma!
+                </p>
+            </div>
+
+            <!-- Grid de Modos de Jogo -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+                <!-- Card 1: Apresentador / Host -->
+                <div class="glass-card rounded-3xl p-6 flex flex-col justify-between hover:border-indigo-400/60 transition group">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-2xl mb-5 group-hover:scale-110 transition">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                        </div>
+                        <h3 class="font-display text-xl font-bold mb-2">Criar Sala (Host)</h3>
+                        <p class="text-slate-300 text-sm mb-6 leading-relaxed">
+                            Para o apresentador projetar na tela. Gera um <strong>PIN exclusivo</strong> para vários colegas entrarem pelo celular e competirem ao vivo.
+                        </p>
+                    </div>
+                    <button onclick="startAsHost()" class="w-full py-3.5 px-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-white shadow-lg shadow-indigo-950/50 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play"></i>
+                        <span>Criar Sala ao Vivo</span>
+                    </button>
+                </div>
+
+                <!-- Card 2: Jogador / Entrar com PIN -->
+                <div class="glass-card rounded-3xl p-6 flex flex-col justify-between border-emerald-400/40 bg-emerald-950/20 hover:border-emerald-400 transition group">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-2xl mb-5 group-hover:scale-110 transition">
+                            <i class="fa-solid fa-mobile-screen-button"></i>
+                        </div>
+                        <h3 class="font-display text-xl font-bold mb-2">Entrar no Jogo</h3>
+                        <p class="text-slate-300 text-sm mb-4 leading-relaxed">
+                            Digite o <strong>PIN de 6 dígitos</strong> mostrado na tela do apresentador e escolha seu nome para responder.
+                        </p>
+                        <div class="space-y-3 mb-4">
+                            <input type="text" id="input-join-pin" maxlength="6" inputmode="numeric" placeholder="PIN DA SALA (ex: 482910)"
+                                class="w-full px-4 py-3 rounded-xl bg-slate-950/70 border border-white/20 text-center font-display text-lg tracking-widest uppercase focus:outline-none focus:border-emerald-400 text-white placeholder-slate-500">
+                            <input type="text" id="input-join-name" maxlength="18" placeholder="Seu Nome ou Apelido"
+                                class="w-full px-4 py-3 rounded-xl bg-slate-950/70 border border-white/20 text-center font-semibold text-base focus:outline-none focus:border-emerald-400 text-white placeholder-slate-500">
+                        </div>
+                    </div>
+                    <button onclick="joinMultiplayerRoom()" class="w-full py-3.5 px-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold shadow-lg shadow-emerald-950/50 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Entrar na Partida</span>
+                    </button>
+                </div>
+
+                <!-- Card 3: Modo Solo / Treino -->
+                <div class="glass-card rounded-3xl p-6 flex flex-col justify-between hover:border-amber-400/60 transition group">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-2xl mb-5 group-hover:scale-110 transition">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+                        <h3 class="font-display text-xl font-bold mb-2">Prática Individual</h3>
+                        <p class="text-slate-300 text-sm mb-6 leading-relaxed">
+                            Responda todas as <strong>25 perguntas</strong> no seu ritmo para revisar os conceitos de Leininger antes da apresentação.
+                        </p>
+                    </div>
+                    <button onclick="startSoloMode()" class="w-full py-3.5 px-5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg shadow-amber-950/50 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Jogar Sozinho (25 Q)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Resumo Rápido dos Pilares (Baseado no roteiro da apresentação) -->
+            <div class="glass-card rounded-3xl p-5 sm:p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="font-display text-base sm:text-lg font-bold text-emerald-300 flex items-center gap-2">
+                        <i class="fa-solid fa-book-medical"></i>
+                        <span>Guia Rápido da Apresentação (25 Questões Inclusas)</span>
+                    </h4>
+                    <button onclick="toggleQuestionPreview()" class="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition font-medium">
+                        <i class="fa-solid fa-list-check mr-1"></i> Ver Lista das 25 Perguntas
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm text-slate-300">
+                    <div class="bg-slate-950/40 p-3.5 rounded-2xl border border-white/5">
+                        <strong class="text-white block mb-1">1. Preservação Cultural</strong>
+                        Manter e respeitar práticas e valores culturais benéficos à saúde do paciente.
+                    </div>
+                    <div class="bg-slate-950/40 p-3.5 rounded-2xl border border-white/5">
+                        <strong class="text-white block mb-1">2. Acomodação / Negociação</strong>
+                        Adaptar ações profissionais para harmonizar crenças culturais com o tratamento.
+                    </div>
+                    <div class="bg-slate-950/40 p-3.5 rounded-2xl border border-white/5">
+                        <strong class="text-white block mb-1">3. Repadronização Cultural</strong>
+                        Orientar mudanças respeitosas quando um hábito oferece risco real à saúde.
+                    </div>
+                </div>
+
+                <!-- Drawer colapsável com as 25 perguntas -->
+                <div id="questions-preview-drawer" class="hidden mt-5 pt-5 border-t border-white/10 max-h-72 overflow-y-auto space-y-2 pr-2">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TELA 2: LOBBY DO APRESENTADOR (HOST)                      -->
+        <!-- ========================================================= -->
+        <section id="view-host-lobby" class="hidden w-full max-w-5xl animate-pop">
+            <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-2xl">
+                <div class="flex flex-col lg:flex-row items-center justify-between gap-6 pb-6 border-b border-white/15">
+                    <div class="text-center lg:text-left">
+                        <span class="inline-block px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-2">
+                            Sala Multiplayer Ativa
+                        </span>
+                        <h2 class="font-display text-2xl sm:text-3xl font-bold mb-1">Entre pelo seu celular!</h2>
+                        <p class="text-slate-300 text-sm">Abra este mesmo link no celular e digite o PIN abaixo:</p>
+                    </div>
+
+                    <!-- Caixa Destaque PIN + QR Code -->
+                    <div class="flex flex-col sm:flex-row items-center gap-5 bg-slate-950/70 p-4 sm:p-5 rounded-3xl border border-emerald-400/40">
+                        <div class="text-center sm:text-left">
+                            <span class="text-xs uppercase tracking-widest text-slate-400 block font-semibold">PIN DO JOGO</span>
+                            <div class="flex items-center gap-3">
+                                <span id="lobby-pin-display" class="font-display text-4xl sm:text-5xl font-extrabold tracking-widest text-emerald-400">
+                                    000000
+                                </span>
+                                <button onclick="copyRoomPin()" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition" title="Copiar PIN">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="qrcode-box" class="bg-white p-2 rounded-xl shadow-md"></div>
+                    </div>
+                </div>
+
+                <!-- Configurações Rápidas da Partida -->
+                <div class="flex flex-wrap items-center justify-between gap-4 py-4 border-b border-white/10 text-sm">
+                    <div class="flex items-center gap-3">
+                        <span class="text-slate-300 font-medium"><i class="fa-regular fa-clock text-emerald-400 mr-1"></i> Tempo por pergunta:</span>
+                        <select id="host-time-select" class="bg-slate-900 border border-white/20 rounded-xl px-3 py-1.5 text-white font-semibold focus:outline-none">
+                            <option value="15">15 segundos (Rápido)</option>
+                            <option value="20" selected>20 segundos (Padrão)</option>
+                            <option value="30">30 segundos (Calmo)</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <span class="text-slate-300 font-medium"><i class="fa-solid fa-layer-group text-indigo-400 mr-1"></i> Quantidade:</span>
+                        <select id="host-count-select" class="bg-slate-900 border border-white/20 rounded-xl px-3 py-1.5 text-white font-semibold focus:outline-none">
+                            <option value="10">10 Primeiras Perguntas</option>
+                            <option value="15">15 Perguntas</option>
+                            <option value="25" selected>Todas as 25 Perguntas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Lista de Jogadores Conectados -->
+                <div class="py-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-display text-lg sm:text-xl font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-users text-emerald-400"></i>
+                            <span>Jogadores Conectados (<span id="lobby-player-count">0</span>)</span>
+                        </h3>
+                        <button onclick="addDemoBots()" class="text-xs px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition">
+                            <i class="fa-solid fa-robot mr-1"></i> Simular Colegas (Teste)
+                        </button>
+                    </div>
+
+                    <div id="lobby-players-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 min-h-[140px] max-h-64 overflow-y-auto p-2 bg-slate-950/30 rounded-2xl border border-white/5">
+                        <div class="col-span-full flex flex-col items-center justify-center text-slate-400 py-8 text-sm">
+                            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-400"></i>
+                            <span>Aguardando participantes entrarem com o PIN...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botões de Ação do Host -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10">
+                    <button onclick="confirmReturnHome()" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm transition">
+                        Cancelar Sala
+                    </button>
+                    <button id="btn-host-start-game" onclick="hostStartQuiz()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-display font-bold text-lg shadow-xl shadow-emerald-950/60 transition flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-rocket"></i>
+                        <span>Iniciar Quiz Agora!</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TELA 3: LOBBY DE ESPERA DO JOGADOR (CELULAR)              -->
+        <!-- ========================================================= -->
+        <section id="view-player-wait" class="hidden w-full max-w-md animate-pop text-center">
+            <div class="glass-card rounded-3xl p-8 shadow-2xl">
+                <div id="player-avatar-badge" class="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-400 to-indigo-500 flex items-center justify-center text-4xl mx-auto mb-5 shadow-lg">
+                    🩺
+                </div>
+                <span class="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold mb-2">
+                    Você está na sala!
+                </span>
+                <h2 id="player-wait-name" class="font-display text-2xl sm:text-3xl font-bold mb-2">Jogador</h2>
+                <p class="text-slate-300 text-sm mb-6">
+                    Olhe para a tela do apresentador. O jogo vai começar a qualquer momento!
+                </p>
+                <div class="flex items-center justify-center gap-2 text-emerald-400 font-semibold text-sm bg-slate-950/50 py-3 px-4 rounded-2xl">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    <span>Aguardando o apresentador iniciar...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TELA 4: ARENA DO QUIZ (PERGUNTA ATIVA)                    -->
+        <!-- ========================================================= -->
+        <section id="view-quiz-active" class="hidden w-full max-w-5xl animate-pop">
+            <!-- Barra de Progresso e Temporizador -->
+            <div class="flex items-center justify-between gap-4 mb-5">
+                <div class="glass-card px-4 py-2 rounded-2xl flex items-center gap-2 text-sm font-bold">
+                    <span class="text-emerald-400">Questão</span>
+                    <span id="quiz-q-current" class="text-lg">1</span>
+                    <span class="text-slate-400">/</span>
+                    <span id="quiz-q-total" class="text-slate-300">25</span>
+                </div>
+
+                <!-- Timer Circular -->
+                <div id="quiz-timer-circle" class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-indigo-600 border-4 border-white/20 flex items-center justify-center font-display text-2xl sm:text-3xl font-extrabold shadow-lg transition-colors">
+                    20
+                </div>
+
+                <!-- Contador de Respostas (Host) ou Pontuação Atual (Jogador/Solo) -->
+                <div id="quiz-right-status" class="glass-card px-4 py-2 rounded-2xl text-right">
+                    <span id="quiz-status-label" class="text-[11px] uppercase tracking-wider text-slate-400 block">Respostas</span>
+                    <span id="quiz-status-value" class="font-display text-lg font-bold text-emerald-400">0 / 0</span>
+                </div>
+            </div>
+
+            <!-- Enunciado da Pergunta -->
+            <div class="glass-card rounded-3xl p-6 sm:p-8 mb-6 text-center shadow-xl border border-white/20">
+                <span id="quiz-category-tag" class="inline-block px-3 py-1 rounded-full bg-white/10 text-emerald-300 text-xs font-semibold mb-3">
+                    Fundamentos da Teoria
+                </span>
+                <h2 id="quiz-question-text" class="font-display text-xl sm:text-2xl md:text-3xl font-bold leading-snug text-white">
+                    Carregando pergunta...
+                </h2>
+            </div>
+
+            <!-- Grid das 4 Alternativas Estilo Kahoot -->
+            <div id="quiz-options-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Botão A (Vermelho - Triângulo) -->
+                <button onclick="submitAnswer(0)" id="opt-btn-0" class="kahoot-btn btn-red rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px]">
+                    <div class="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center shrink-0 text-2xl">
+                        <i class="fa-solid fa-play -rotate-90"></i>
+                    </div>
+                    <span id="opt-text-0" class="font-bold text-base sm:text-lg leading-snug">Alternativa A</span>
+                </button>
+
+                <!-- Botão B (Azul - Losango) -->
+                <button onclick="submitAnswer(1)" id="opt-btn-1" class="kahoot-btn btn-blue rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px]">
+                    <div class="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center shrink-0 text-2xl">
+                        <i class="fa-solid fa-diamond"></i>
+                    </div>
+                    <span id="opt-text-1" class="font-bold text-base sm:text-lg leading-snug">Alternativa B</span>
+                </button>
+
+                <!-- Botão C (Amarelo - Círculo) -->
+                <button onclick="submitAnswer(2)" id="opt-btn-2" class="kahoot-btn btn-yellow rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px]">
+                    <div class="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center shrink-0 text-2xl">
+                        <i class="fa-solid fa-circle"></i>
+                    </div>
+                    <span id="opt-text-2" class="font-bold text-base sm:text-lg leading-snug">Alternativa C</span>
+                </button>
+
+                <!-- Botão D (Verde - Quadrado) -->
+                <button onclick="submitAnswer(3)" id="opt-btn-3" class="kahoot-btn btn-green rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px]">
+                    <div class="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center shrink-0 text-2xl">
+                        <i class="fa-solid fa-square"></i>
+                    </div>
+                    <span id="opt-text-3" class="font-bold text-base sm:text-lg leading-snug">Alternativa D</span>
+                </button>
+            </div>
+
+            <!-- Feedback imediato para o jogador após clicar -->
+            <div id="player-answered-banner" class="hidden mt-6 glass-card rounded-2xl p-5 text-center border border-emerald-400/40 animate-pop">
+                <i class="fa-solid fa-check-circle text-3xl text-emerald-400 mb-2"></i>
+                <h4 class="font-display text-lg font-bold">Resposta Registrada!</h4>
+                <p class="text-slate-300 text-sm">Aguardando o tempo encerrar para revelar o resultado...</p>
+            </div>
+
+            <!-- Botão do Host para encerrar tempo antecipadamente -->
+            <div id="host-skip-timer-box" class="hidden mt-6 text-center">
+                <button onclick="hostForceReveal()" class="px-5 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-xs sm:text-sm font-semibold transition">
+                    <i class="fa-solid fa-forward-step mr-1"></i> Encerrar Tempo & Mostrar Resposta
+                </button>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TELA 5: RESULTADO DA RODADA + PLACAR PARCIAL              -->
+        <!-- ========================================================= -->
+        <section id="view-round-result" class="hidden w-full max-w-4xl animate-pop">
+            <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-2xl">
+                <!-- Banner de Acerto/Erro (para Jogador/Solo) ou Resumo (Host) -->
+                <div id="round-feedback-header" class="text-center mb-6">
+                    <div id="round-icon-badge" class="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl mx-auto mb-3">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <h2 id="round-result-title" class="font-display text-2xl sm:text-3xl font-bold mb-1">Resposta Correta!</h2>
+                    <p id="round-result-subtitle" class="text-emerald-300 font-semibold text-sm sm:text-base">+850 pontos</p>
+                </div>
+
+                <!-- Explicação Didática da Resposta -->
+                <div class="bg-slate-950/60 border border-emerald-400/30 rounded-2xl p-4 sm:p-5 mb-6">
+                    <div class="flex items-start gap-3">
+                        <i class="fa-solid fa-lightbulb text-amber-400 text-xl mt-0.5"></i>
+                        <div>
+                            <span class="text-xs uppercase tracking-wider text-emerald-400 font-bold block mb-1">
+                                Gabarito: <span id="round-correct-text" class="text-white">...</span>
+                            </span>
+                            <p id="round-explanation-text" class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                                Explicação teórica...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfico de Distribuição das Respostas -->
+                <div class="mb-6">
+                    <h4 class="text-xs uppercase tracking-wider text-slate-400 font-bold mb-3">Distribuição das Respostas da Turma</h4>
+                    <div class="grid grid-cols-4 gap-3 items-end h-28 bg-slate-950/40 p-3 rounded-2xl">
+                        <div class="flex flex-col items-center h-full justify-end">
+                            <span id="bar-count-0" class="text-xs font-bold mb-1">0</span>
+                            <div id="bar-fill-0" class="w-full bg-[#e21b3c] rounded-t-lg transition-all duration-500" style="height: 10%"></div>
+                            <span class="text-[10px] mt-1 font-bold text-slate-400">A</span>
+                        </div>
+                        <div class="flex flex-col items-center h-full justify-end">
+                            <span id="bar-count-1" class="text-xs font-bold mb-1">0</span>
+                            <div id="bar-fill-1" class="w-full bg-[#1368ce] rounded-t-lg transition-all duration-500" style="height: 10%"></div>
+                            <span class="text-[10px] mt-1 font-bold text-slate-400">B</span>
+                        </div>
+                        <div class="flex flex-col items-center h-full justify-end">
+                            <span id="bar-count-2" class="text-xs font-bold mb-1">0</span>
+                            <div id="bar-fill-2" class="w-full bg-[#d89e00] rounded-t-lg transition-all duration-500" style="height: 10%"></div>
+                            <span class="text-[10px] mt-1 font-bold text-slate-400">C</span>
+                        </div>
+                        <div class="flex flex-col items-center h-full justify-end">
+                            <span id="bar-count-3" class="text-xs font-bold mb-1">0</span>
+                            <div id="bar-fill-3" class="w-full bg-[#26890c] rounded-t-lg transition-all duration-500" style="height: 10%"></div>
+                            <span class="text-[10px] mt-1 font-bold text-slate-400">D</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ranking Parcial Top 5 -->
+                <div id="round-leaderboard-box" class="mb-6">
+                    <h4 class="font-display text-base font-bold mb-3 flex items-center gap-2 text-amber-300">
+                        <i class="fa-solid fa-trophy"></i>
+                        <span>Top 5 Líderes da Partida</span>
+                    </h4>
+                    <div id="round-leaderboard-list" class="space-y-2">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+
+                <!-- Botão Próxima Pergunta -->
+                <div class="text-center">
+                    <button id="btn-next-question" onclick="advanceToNextQuestion()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-display font-bold text-lg shadow-lg transition inline-flex items-center justify-center gap-2">
+                        <span>Próxima Questão</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                    <p id="player-wait-next-msg" class="hidden text-slate-400 text-sm">
+                        <i class="fa-solid fa-hourglass-half mr-1 animate-pulse"></i> Aguardando o apresentador avançar...
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TELA 6: PÓDIO FINAL & CLASSIFICAÇÃO COMPLETA              -->
+        <!-- ========================================================= -->
+        <section id="view-podium" class="hidden w-full max-w-4xl animate-pop">
+            <div class="glass-card rounded-3xl p-6 sm:p-10 text-center shadow-2xl border border-amber-400/30">
+                <span class="inline-block px-4 py-1.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold uppercase tracking-widest mb-3">
+                    Fim do Quiz • Madeleine Leininger
+                </span>
+                <h2 class="font-display text-3xl sm:text-5xl font-bold mb-8 bg-gradient-to-r from-amber-200 via-yellow-300 to-emerald-300 bg-clip-text text-transparent">
+                    Pódio dos Campeões!
+                </h2>
+
+                <!-- Pódio Visual 2º - 1º - 3º -->
+                <div id="podium-visual-stage" class="flex items-end justify-center gap-2 sm:gap-5 mb-10 pt-6">
+                    <!-- 2º Lugar -->
+                    <div id="podium-place-2" class="flex flex-col items-center w-28 sm:w-36">
+                        <div class="text-2xl sm:text-3xl mb-1">🥈</div>
+                        <div id="podium-name-2" class="font-bold text-xs sm:text-sm truncate w-full mb-1">---</div>
+                        <div id="podium-score-2" class="text-xs text-slate-300 mb-2">0 pts</div>
+                        <div class="w-full h-24 sm:h-28 bg-gradient-to-t from-slate-600 to-slate-400 rounded-t-2xl flex items-center justify-center font-display text-2xl sm:text-3xl font-extrabold text-slate-950 shadow-lg">
+                            2º
+                        </div>
+                    </div>
+
+                    <!-- 1º Lugar -->
+                    <div id="podium-place-1" class="flex flex-col items-center w-32 sm:w-44">
+                        <div class="text-3xl sm:text-4xl mb-1 animate-bounce">👑</div>
+                        <div id="podium-name-1" class="font-extrabold text-sm sm:text-base text-amber-300 truncate w-full mb-1">---</div>
+                        <div id="podium-score-1" class="text-xs sm:text-sm font-bold text-emerald-300 mb-2">0 pts</div>
+                        <div class="w-full h-32 sm:h-40 bg-gradient-to-t from-amber-600 to-yellow-400 rounded-t-2xl flex items-center justify-center font-display text-3xl sm:text-4xl font-extrabold text-slate-950 shadow-xl">
+                            1º
+                        </div>
+                    </div>
+
+                    <!-- 3º Lugar -->
+                    <div id="podium-place-3" class="flex flex-col items-center w-28 sm:w-36">
+                        <div class="text-2xl sm:text-3xl mb-1">🥉</div>
+                        <div id="podium-name-3" class="font-bold text-xs sm:text-sm truncate w-full mb-1">---</div>
+                        <div id="podium-score-3" class="text-xs text-slate-300 mb-2">0 pts</div>
+                        <div class="w-full h-20 sm:h-24 bg-gradient-to-t from-amber-900 to-amber-700 rounded-t-2xl flex items-center justify-center font-display text-2xl sm:text-3xl font-extrabold text-amber-100 shadow-lg">
+                            3º
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabela Completa de Classificação -->
+                <div class="text-left bg-slate-950/50 rounded-2xl p-4 sm:p-6 mb-8 border border-white/10">
+                    <h4 class="font-display text-base sm:text-lg font-bold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-ranking-star text-emerald-400"></i>
+                        <span>Classificação Geral</span>
+                    </h4>
+                    <div id="final-ranking-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+
+                <!-- Botões Finais -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <button onclick="returnHome()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-lg shadow-lg transition">
+                        <i class="fa-solid fa-rotate-left mr-2"></i> Voltar ao Início
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- SCRIPT PRINCIPAL (FIREBASE + LÓGICA DO QUIZ + ÁUDIO)      -->
+    <!-- ========================================================= -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // =========================================================================
+        // 1. BANCO COMPLETO DE 25 PERGUNTAS SOBRE MADELEINE LEININGER
+        // =========================================================================
+        const QUESTIONS_DB = [
+            // --- 10 PERGUNTAS FORNECIDAS PELO USUÁRIO ---
+            {
+                q: "1. Quem foi Madeleine Leininger?",
+                options: [
+                    "Médica e psicóloga",
+                    "Enfermeira e antropóloga",
+                    "Farmacêutica",
+                    "Fisioterapeuta"
+                ],
+                correct: 1,
+                category: "Biografia & História",
+                explanation: "Nascida em 1925 nos EUA, Madeleine Leininger foi enfermeira e tornou-se a primeira enfermeira a obter doutorado em Antropologia, unindo as duas áreas."
+            },
+            {
+                q: "2. Qual teoria Madeleine Leininger desenvolveu?",
+                options: [
+                    "Teoria Ambientalista",
+                    "Teoria das Necessidades Humanas",
+                    "Teoria do Cuidado Transcultural",
+                    "Teoria do Autocuidado"
+                ],
+                correct: 2,
+                category: "Fundamentos da Teoria",
+                explanation: "Ela criou a Teoria da Diversidade e Universalidade do Cuidado Cultural, amplamente conhecida como Teoria do Cuidado Transcultural."
+            },
+            {
+                q: "3. O que a teoria de Leininger valoriza principalmente?",
+                options: [
+                    "Apenas os procedimentos técnicos",
+                    "A cultura e as crenças do paciente",
+                    "O uso de medicamentos",
+                    "A rapidez no atendimento"
+                ],
+                correct: 1,
+                category: "Valores do Cuidado",
+                explanation: "Leininger defendia que o cuidado vai além da técnica biomédica, devendo integrar valores, crenças e modos de vida de cada pessoa."
+            },
+            {
+                q: "4. Segundo Leininger, o cuidado de enfermagem deve ser:",
+                options: [
+                    "Igual para todos, sem considerar diferenças",
+                    "Baseado apenas no diagnóstico",
+                    "Individualizado e respeitoso com a cultura",
+                    "Realizado sem comunicação"
+                ],
+                correct: 2,
+                category: "Prática Assistencial",
+                explanation: "Cada indivíduo vivencia a saúde e a doença segundo sua bagagem cultural; portanto, o cuidado precisa ser personalizado e culturalmente congruente."
+            },
+            {
+                q: "5. O que significa preservação do cuidado cultural?",
+                options: [
+                    "Respeitar e manter práticas culturais benéficas",
+                    "Proibir hábitos culturais",
+                    "Ignorar as crenças",
+                    "Substituir todos os costumes"
+                ],
+                correct: 0,
+                category: "Modos de Decisão",
+                explanation: "A Preservação ou Manutenção ocorre quando os hábitos culturais do paciente trazem bem-estar e não prejudicam sua recuperação clínica."
+            },
+            {
+                q: "6. O que significa acomodação ou negociação do cuidado cultural?",
+                options: [
+                    "Obrigar o paciente a aceitar o tratamento",
+                    "Adaptar ou negociar o cuidado respeitando a cultura",
+                    "Ignorar as necessidades do paciente",
+                    "Evitar conversar com a família"
+                ],
+                correct: 1,
+                category: "Modos de Decisão",
+                explanation: "A Acomodação/Negociação envolve ajustar horários, dietas ou rotinas hospitalares para respeitar crenças do paciente sem comprometer o tratamento."
+            },
+            {
+                q: "7. O que é repadronização do cuidado cultural?",
+                options: [
+                    "Manter todos os hábitos, mesmo prejudiciais",
+                    "Ignorar os hábitos do paciente",
+                    "Orientar mudanças em práticas que possam prejudicar a saúde",
+                    "Realizar apenas procedimentos médicos"
+                ],
+                correct: 2,
+                category: "Modos de Decisão",
+                explanation: "Na Repadronização/Reestruturação, o enfermeiro dialoga e ajuda o paciente a modificar hábitos nocivos à saúde, respeitando sua dignidade."
+            },
+            {
+                q: "8. Um paciente deseja seguir um costume cultural durante sua internação. O que o profissional deve fazer?",
+                options: [
+                    "Ridicularizar o costume",
+                    "Ignorar o paciente",
+                    "Buscar compreender e respeitar, quando possível, o costume",
+                    "Proibir imediatamente"
+                ],
+                correct: 2,
+                category: "Ética & Conduta",
+                explanation: "A escuta ativa e o respeito cultural fortalecem o vínculo terapêutico e aumentam a adesão do paciente ao cuidado."
+            },
+            {
+                q: "9. A teoria de Leininger contribui para qual tipo de assistência?",
+                options: [
+                    "Assistência desumanizada",
+                    "Assistência humanizada",
+                    "Assistência sem diálogo",
+                    "Assistência exclusivamente técnica"
+                ],
+                correct: 1,
+                category: "Humanização",
+                explanation: "Ao enxergar o paciente em sua totalidade biopsicossocial e espiritual, o cuidado transcultural promove uma enfermagem profundamente humanizada."
+            },
+            {
+                q: "10. Para Leininger, cuidar de um paciente significa:",
+                options: [
+                    "Apenas administrar medicamentos",
+                    "Apenas realizar curativos",
+                    "Compreender o paciente, respeitando sua cultura e individualidade",
+                    "Seguir uma rotina sem adaptações"
+                ],
+                correct: 2,
+                category: "Essência do Cuidar",
+                explanation: "Para Leininger, 'o cuidado é a essência da enfermagem', e não há cura completa sem o cuidado culturalmente sensível."
+            },
+
+            // --- 15 PERGUNTAS COMPLEMENTARES PARA COMPLETAR AS 25 ---
+            {
+                q: "11. Qual famoso diagrama visual Madeleine Leininger criou para representar os fatores que influenciam o cuidado cultural?",
+                options: [
+                    "Pirâmide de Maslow",
+                    "Modelo Sunrise (Sol Nascente)",
+                    "Diagrama de Ishikawa",
+                    "Roda da Saúde Pública"
+                ],
+                correct: 1,
+                category: "Modelo Teórico",
+                explanation: "O Modelo Sunrise (Sol Nascente) ilustra como visão de mundo, religião, parentesco, economia e política influenciam o cuidado de enfermagem."
+            },
+            {
+                q: "12. Qual método de pesquisa foi desenvolvido por Leininger para estudar crenças e práticas de cuidado nas culturas?",
+                options: [
+                    "Ensaio Clínico Duplo-Cego",
+                    "Etnoenfermagem",
+                    "Bioestatística Pura",
+                    "Análise Laboratorial"
+                ],
+                correct: 1,
+                category: "Pesquisa em Enfermagem",
+                explanation: "A Etnoenfermagem é um método qualitativo focado em observar e compreender os significados do cuidado sob a ótica dos próprios grupos culturais."
+            },
+            {
+                q: "13. No Modelo Sunrise, qual é a diferença entre 'Cuidado Genérico (Popular)' e 'Cuidado Profissional'?",
+                options: [
+                    "O genérico é aprendido na cultura/família; o profissional é aprendido formalmente",
+                    "Não existe diferença entre eles",
+                    "O cuidado genérico usa apenas cirurgias",
+                    "O cuidado profissional rejeita a ciência"
+                ],
+                correct: 0,
+                category: "Conceitos-Chave",
+                explanation: "O cuidado genérico envolve saberes tradicionais (chás, rezas, cuidados familiares), enquanto o profissional vem da formação científica."
+            },
+            {
+                q: "14. O que significa 'Diversidade do Cuidado Cultural' na teoria de Leininger?",
+                options: [
+                    "Que todas as culturas cuidam exatamente da mesma forma",
+                    "As variações e diferenças nos significados e formas de cuidar entre culturas",
+                    "Que apenas uma cultura possui o cuidado correto",
+                    "A padronização rígida dos hospitais"
+                ],
+                correct: 1,
+                category: "Diversidade & Universalidade",
+                explanation: "Diversidade refere-se às diferentes maneiras, símbolos e rituais que cada povo utiliza para cuidar da saúde."
+            },
+            {
+                q: "15. E o que significa 'Universalidade do Cuidado Cultural'?",
+                options: [
+                    "Que existem valores e necessidades de cuidado comuns a toda a humanidade",
+                    "Que o cuidado só existe em países ricos",
+                    "Que as tradições locais devem ser apagadas",
+                    "Que todos devem falar o mesmo idioma"
+                ],
+                correct: 0,
+                category: "Diversidade & Universalidade",
+                explanation: "Apesar das diferenças culturais, todo ser humano precisa de acolhimento, proteção e apoio — isso é a universalidade do cuidado."
+            },
+            {
+                q: "16. O que ocorre quando um profissional impõe suas próprias crenças e valores ao paciente sem respeitar sua cultura?",
+                options: [
+                    "Empatia cultural",
+                    "Imposição cultural (etnocentrismo)",
+                    "Preservação cultural",
+                    "Escuta qualificada"
+                ],
+                correct: 1,
+                category: "Desafios na Prática",
+                explanation: "A imposição cultural acontece quando o profissional julga sua cultura superior e força o paciente a abandonar seus costumes."
+            },
+            {
+                q: "17. Quais fatores fazem parte da 'Estrutura Social e Cultural' no Modelo Sunrise?",
+                options: [
+                    "Apenas tipo sanguíneo e peso corporal",
+                    "Religião, parentesco, valores culturais, política, economia e educação",
+                    "Somente a marca dos equipamentos hospitalares",
+                    "Apenas o clima da cidade"
+                ],
+                correct: 1,
+                category: "Modelo Sunrise",
+                explanation: "Leininger mostrou que fatores religiosos, familiares, econômicos e educacionais moldam diretamente as decisões de saúde."
+            },
+            {
+                q: "18. Como é chamado o sentimento de desorientação e estresse que um paciente sente ao entrar em um ambiente hospitalar com regras totalmente estranhas à sua cultura?",
+                options: [
+                    "Choque cultural",
+                    "Alta hospitalar",
+                    "Imunidade adquirida",
+                    "Preservação plena"
+                ],
+                correct: 0,
+                category: "Vivência do Paciente",
+                explanation: "O choque cultural gera ansiedade e medo, podendo dificultar a comunicação e a recuperação do paciente internado."
+            },
+            {
+                q: "19. Um paciente indígena ou quilombola pede a presença de um líder espiritual junto à equipe médica. Qual ação representa a Acomodação Cultural?",
+                options: [
+                    "Negar a entrada sem explicação",
+                    "Permitir a visita espiritual integrada ao plano terapêutico seguro",
+                    "Substituir os antibióticos apenas pela visita",
+                    "Transferir o paciente de hospital"
+                ],
+                correct: 1,
+                category: "Estudo de Caso",
+                explanation: "Integrar o apoio espiritual ao tratamento clínico é um exemplo clássico de acomodação/negociação cultural segura."
+            },
+            {
+                q: "20. Em qual década Madeleine Leininger iniciou formalmente o movimento da Enfermagem Transcultural?",
+                options: [
+                    "Década de 1910",
+                    "Década de 1950",
+                    "Década de 2010",
+                    "Década de 1850"
+                ],
+                correct: 1,
+                category: "História da Enfermagem",
+                explanation: "Nos anos 1950, trabalhando com crianças de diversas origens étnicas, Leininger percebeu o impacto da cultura no comportamento e no cuidado."
+            },
+            {
+                q: "21. Segundo Leininger, qual é a relação entre 'Cuidado' e 'Cura'?",
+                options: [
+                    "Pode existir cura sem cuidado, mas não pode existir cuidado sem cura",
+                    "Pode existir cuidado sem cura, mas não pode existir cura verdadeira sem cuidado",
+                    "Nenhum dos dois é importante na enfermagem",
+                    "São palavras com exatamente o mesmo significado técnico"
+                ],
+                correct: 1,
+                category: "Filosofia do Cuidar",
+                explanation: "Frase célebre de Leininger: 'Pode haver cuidado sem cura, mas não pode haver cura sem cuidado' — destacando o valor do acolhimento mesmo em doenças crônicas."
+            },
+            {
+                q: "22. O que significa 'Etno-história' na avaliação transcultural de um paciente?",
+                options: [
+                    "Apenas o histórico de alergias a remédios",
+                    "Os fatos, experiências passadas e trajetórias históricas de um indivíduo ou grupo",
+                    "O número do prontuário eletrônico",
+                    "A lista de exames laboratoriais"
+                ],
+                correct: 1,
+                category: "Conceitos-Chave",
+                explanation: "Conhecer a etno-história ajuda o enfermeiro a entender como eventos passados (migrações, traumas, tradições) moldam a visão atual do paciente."
+            },
+            {
+                q: "23. Quando uma mãe utiliza um chá caseiro que não interage com os medicamentos prescritos e acalma a criança, qual decisão o enfermeiro deve tomar?",
+                options: [
+                    "Repadronizar proibindo o chá imediatamente",
+                    "Preservar o cuidado cultural, pois é benéfico e seguro",
+                    "Denunciar a família",
+                    "Ignorar a mãe"
+                ],
+                correct: 1,
+                category: "Estudo de Caso",
+                explanation: "Se a prática cultural é segura e traz conforto emocional e físico, ela deve ser preservada e valorizada."
+            },
+            {
+                q: "24. Qual é o objetivo final da Teoria do Cuidado Transcultural na prática da enfermagem?",
+                options: [
+                    "Fornecer um cuidado culturalmente congruente, seguro e significativo",
+                    "Reduzir o tempo de conversa com o paciente",
+                    "Substituir a enfermagem pela antropologia",
+                    "Criar protocolos idênticos para todos os países"
+                ],
+                correct: 0,
+                category: "Objetivo da Teoria",
+                explanation: "O cuidado culturalmente congruente une o conhecimento científico da enfermagem aos valores culturais do paciente."
+            },
+            {
+                q: "25. Por que a Teoria de Madeleine Leininger é tão relevante no Brasil (SUS)?",
+                options: [
+                    "Porque o Brasil possui grande diversidade cultural, étnica, religiosa e regional",
+                    "Porque todos os brasileiros têm exatamente os mesmos costumes",
+                    "Porque o SUS proíbe práticas integrativas",
+                    "Porque a teoria só se aplica a hospitais privados"
+                ],
+                correct: 0,
+                category: "Aplicação no Brasil",
+                explanation: "O Brasil é um país multicultural (povos indígenas, afro-brasileiros, imigrantes, comunidades rurais e urbanas), exigindo enfermeiros culturalmente competentes."
+            }
+        ];
+
+        // =========================================================================
+        // 2. INICIALIZAÇÃO DO FIREBASE (MULTIPLAYER EM TEMPO REAL)
+        // =========================================================================
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let firebaseReady = false;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'leininger-quiz-app';
+
+        async function initFirebase() {
+            try {
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    currentUser = auth.currentUser;
+                    firebaseReady = true;
+                }
+            } catch (err) {
+                console.warn("Firebase rodando em modo fallback local:", err);
+                firebaseReady = false;
+            }
+        }
+        initFirebase();
+
+        // =========================================================================
+        // 3. SISTEMA DE EFEITOS SONOROS (WEB AUDIO API - SEM ARQUIVOS EXTERNOS)
+        // =========================================================================
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playTone(freq, type = 'sine', duration = 0.15, vol = 0.12, delay = 0) {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+                gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + delay);
+                osc.stop(ctx.currentTime + delay + duration);
+            } catch (e) {}
+        }
+
+        const SFX = {
+            click: () => playTone(520, 'triangle', 0.08, 0.1),
+            tick: () => playTone(880, 'sine', 0.07, 0.08),
+            urgentTick: () => playTone(1100, 'square', 0.09, 0.1),
+            correct: () => {
+                playTone(523.25, 'triangle', 0.15, 0.15, 0);     // C5
+                playTone(659.25, 'triangle', 0.15, 0.15, 0.1);   // E5
+                playTone(783.99, 'triangle', 0.25, 0.18, 0.2);   // G5
+                playTone(1046.50, 'triangle', 0.35, 0.2, 0.32);  // C6
+            },
+            wrong: () => {
+                playTone(300, 'sawtooth', 0.2, 0.14, 0);
+                playTone(220, 'sawtooth', 0.35, 0.14, 0.18);
+            },
+            podium: () => {
+                const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+                notes.forEach((n, i) => playTone(n, 'triangle', 0.22, 0.16, i * 0.14));
+            }
+        };
+
+        window.toggleSound = function() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            icon.className = soundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark text-rose-400';
+            showToast(soundEnabled ? "Som ativado" : "Som silenciado", "info");
+        };
+
+        // =========================================================================
+        // 4. ESTADO GLOBAL DO JOGO
+        // =========================================================================
+        const AVATARS = ["🩺", "💉", "🧬", "🏥", "❤️‍🩹", "🌿", "🌍", "🧠", "👩‍⚕️", "👨‍⚕️", "🔬", "✨"];
+
+        let gameState = {
+            mode: null, // 'host' | 'player' | 'solo'
+            roomPin: null,
+            playerId: null,
+            playerName: '',
+            playerAvatar: '🩺',
+            score: 0,
+            correctCount: 0,
+            streak: 0,
+            questions: [],
+            currentQIndex: 0,
+            timePerQuestion: 20,
+            timeRemaining: 20,
+            timerInterval: null,
+            hasAnsweredCurrent: false,
+            selectedOption: null,
+            unsubscribeRoom: null,
+            unsubscribePlayers: null,
+            playersMap: {}, // { playerId: { name, avatar, score, correctCount, lastAnswer, lastPoints } }
+            lastRenderedStatus: null,
+            lastRenderedQIndex: -1
+        };
+
+        // =========================================================================
+        // 5. UTILITÁRIOS DE UI (VIEWS, TOASTS, MODAL, LISTA DE QUESTÕES)
+        // =========================================================================
+        function switchView(viewId) {
+            const views = [
+                'view-home',
+                'view-host-lobby',
+                'view-player-wait',
+                'view-quiz-active',
+                'view-round-result',
+                'view-podium'
+            ];
+            views.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(viewId);
+            if (target) target.classList.remove('hidden');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                info: 'bg-slate-900/95 border-indigo-400/50 text-white',
+                success: 'bg-emerald-950/95 border-emerald-400 text-emerald-200',
+                error: 'bg-rose-950/95 border-rose-400 text-rose-200'
+            };
+            toast.className = `px-4 py-3 rounded-2xl border shadow-xl backdrop-blur-md text-sm font-semibold flex items-center gap-3 animate-pop ${colors[type] || colors.info}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation text-rose-400' : type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-circle-info text-indigo-400'}"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        let modalCallback = null;
+        function openModal(title, message, onConfirm) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            modalCallback = onConfirm;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        window.closeModal = function() {
+            document.getElementById('custom-modal').classList.add('hidden');
+            modalCallback = null;
+        };
+
+        document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+            if (modalCallback) modalCallback();
+            closeModal();
+        });
+
+        window.confirmReturnHome = function() {
+            if (!gameState.mode) return;
+            openModal(
+                "Sair da Partida?",
+                "Você voltará para a tela inicial e o progresso atual será encerrado.",
+                () => returnHome()
+            );
+        };
+
+        window.returnHome = function() {
+            clearInterval(gameState.timerInterval);
+            if (gameState.unsubscribeRoom) gameState.unsubscribeRoom();
+            if (gameState.unsubscribePlayers) gameState.unsubscribePlayers();
+            gameState = {
+                mode: null,
+                roomPin: null,
+                playerId: null,
+                playerName: '',
+                playerAvatar: '🩺',
+                score: 0,
+                correctCount: 0,
+                streak: 0,
+                questions: [],
+                currentQIndex: 0,
+                timePerQuestion: 20,
+                timeRemaining: 20,
+                timerInterval: null,
+                hasAnsweredCurrent: false,
+                selectedOption: null,
+                unsubscribeRoom: null,
+                unsubscribePlayers: null,
+                playersMap: {},
+                lastRenderedStatus: null,
+                lastRenderedQIndex: -1
+            };
+            document.getElementById('header-room-badge').classList.add('hidden');
+            document.getElementById('header-room-badge').classList.remove('flex');
+            switchView('view-home');
+        };
+
+        // Renderiza o drawer com as 25 perguntas na tela inicial
+        function renderQuestionsPreview() {
+            const drawer = document.getElementById('questions-preview-drawer');
+            drawer.innerHTML = QUESTIONS_DB.map((item, idx) => `
+                <div class="bg-slate-950/50 p-3 rounded-xl border border-white/5 text-xs sm:text-sm">
+                    <div class="font-bold text-white mb-1">${item.q}</div>
+                    <div class="text-emerald-400 font-semibold">
+                        <i class="fa-solid fa-check mr-1"></i> ${item.options[item.correct]}
+                    </div>
+                </div>
+            `).join('');
+        }
+        renderQuestionsPreview();
+
+        window.toggleQuestionPreview = function() {
+            SFX.click();
+            const drawer = document.getElementById('questions-preview-drawer');
+            drawer.classList.toggle('hidden');
+        };
+
+        window.copyRoomPin = function() {
+            if (!gameState.roomPin) return;
+            const temp = document.createElement('input');
+            temp.value = gameState.roomPin;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast(`PIN ${gameState.roomPin} copiado!`, "success");
+        };
+
+        window.downloadSelfHTML = function() {
+            const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "Quiz_Madeleine_Leininger.html";
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("Arquivo HTML baixado com sucesso!", "success");
+        };
+
+        // =========================================================================
+        // 6. MODO SOLO (PRÁTICA INDIVIDUAL COM AS 25 PERGUNTAS)
+        // =========================================================================
+        window.startSoloMode = function() {
+            SFX.click();
+            gameState.mode = 'solo';
+            gameState.questions = [...QUESTIONS_DB];
+            gameState.currentQIndex = 0;
+            gameState.score = 0;
+            gameState.correctCount = 0;
+            gameState.streak = 0;
+            gameState.timePerQuestion = 25;
+
+            renderQuestionScreen();
+        };
+
+        // =========================================================================
+        // 7. MODO HOST / APRESENTADOR (MULTIPLAYER)
+        // =========================================================================
+        window.startAsHost = async function() {
+            SFX.click();
+            const pin = Math.floor(100000 + Math.random() * 900000).toString();
+            gameState.mode = 'host';
+            gameState.roomPin = pin;
+            gameState.playersMap = {};
+
+            document.getElementById('lobby-pin-display').textContent = pin;
+            document.getElementById('header-pin-text').textContent = pin;
+            document.getElementById('header-room-badge').classList.remove('hidden');
+            document.getElementById('header-room-badge').classList.add('flex');
+
+            // Gerar QR Code apontando para a URL atual com ?pin=XXXXXX
+            const qrContainer = document.getElementById('qrcode-box');
+            qrContainer.innerHTML = '';
+            try {
+                const joinUrl = `${window.location.origin}${window.location.pathname}?pin=${pin}`;
+                new QRCode(qrContainer, {
+                    text: joinUrl,
+                    width: 96,
+                    height: 96,
+                    colorDark: "#0f172a",
+                    colorLight: "#ffffff"
+                });
+            } catch (e) {
+                qrContainer.innerHTML = '<div class="text-slate-900 text-xs font-bold p-2">PIN: ' + pin + '</div>';
+            }
+
+            switchView('view-host-lobby');
+            renderLobbyPlayers();
+
+            // Persistir sala no Firestore se disponível
+            if (firebaseReady && db && currentUser) {
+                try {
+                    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'leininger_rooms', pin);
+                    await setDoc(roomRef, {
+                        pin: pin,
+                        hostId: currentUser.uid,
+                        status: 'lobby', // 'lobby' | 'question' | 'reveal' | 'podium'
+                        currentQIndex: 0,
+                        questionCount: 25,
+                        timePerQuestion: 20,
+                        createdAt: Date.now()
+                    });
+
+                    // Ouvir jogadores entrando em tempo real
+                    const playersCol = collection(db, 'artifacts', appId, 'public', 'data', `leininger_players_${pin}`);
+                    gameState.unsubscribePlayers = onSnapshot(playersCol, (snapshot) => {
+                        snapshot.docChanges().forEach((change) => {
+                            const pData = change.doc.data();
+                            if (change.type === 'removed') {
+                                delete gameState.playersMap[change.doc.id];
+                            } else {
+                                gameState.playersMap[change.doc.id] = pData;
+                            }
+                        });
+                        renderLobbyPlayers();
+                        updateLiveAnswerCounter();
+                    }, (err) => {
+                        console.error("Erro ao sincronizar jogadores:", err);
+                    });
+                } catch (e) {
+                    console.error("Erro ao criar sala na nuvem:", e);
+                    showToast("Sala criada em modo local!", "info");
+                }
+            }
+        };
+
+        function renderLobbyPlayers() {
+            const grid = document.getElementById('lobby-players-grid');
+            const countSpan = document.getElementById('lobby-player-count');
+            const players = Object.values(gameState.playersMap);
+            countSpan.textContent = players.length;
+
+            if (players.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center justify-center text-slate-400 py-8 text-sm">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-400"></i>
+                        <span>Aguardando participantes entrarem com o PIN <strong>${gameState.roomPin}</strong>...</span>
+                    </div>`;
+                return;
+            }
+
+            grid.innerHTML = players.map(p => `
+                <div class="bg-slate-900/90 border border-emerald-400/30 rounded-2xl px-3.5 py-2.5 flex items-center gap-2.5 animate-pop shadow">
+                    <span class="text-2xl">${p.avatar || '🩺'}</span>
+                    <span class="font-bold text-sm truncate text-white">${escapeHTML(p.name)}</span>
+                </div>
+            `).join('');
+        }
+
+        // Adiciona participantes simulados caso o apresentador queira testar sozinho no projetor
+        window.addDemoBots = function() {
+            SFX.click();
+            const demoNames = ["Ana (Enf)", "Lucas", "Malu", "Carla", "Pedro"];
+            demoNames.forEach((name, idx) => {
+                const botId = `bot_${idx}_${Date.now()}`;
+                gameState.playersMap[botId] = {
+                    id: botId,
+                    name: name,
+                    avatar: AVATARS[(idx + 2) % AVATARS.length],
+                    score: 0,
+                    correctCount: 0,
+                    isBot: true,
+                    lastAnswer: null,
+                    lastQuestionIndex: -1
+                };
+            });
+            renderLobbyPlayers();
+            showToast("5 colegas simulados adicionados!", "success");
+        };
+
+        window.hostStartQuiz = async function() {
+            SFX.click();
+            const count = parseInt(document.getElementById('host-count-select').value, 10) || 25;
+            const timeSec = parseInt(document.getElementById('host-time-select').value, 10) || 20;
+
+            gameState.questions = QUESTIONS_DB.slice(0, count);
+            gameState.timePerQuestion = timeSec;
+            gameState.currentQIndex = 0;
+
+            await hostPushQuestionState('question', 0);
+            renderQuestionScreen();
+        };
+
+        async function hostPushQuestionState(status, qIndex) {
+            if (firebaseReady && db && gameState.roomPin) {
+                try {
+                    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'leininger_rooms', gameState.roomPin);
+                    await updateDoc(roomRef, {
+                        status: status,
+                        currentQIndex: qIndex,
+                        questionCount: gameState.questions.length,
+                        timePerQuestion: gameState.timePerQuestion,
+                        updatedAt: Date.now()
+                    });
+                } catch (e) {
+                    console.error("Erro ao atualizar sala:", e);
+                }
+            }
+        }
+
+        // =========================================================================
+        // 8. MODO JOGADOR (ENTRAR PELO CELULAR COM PIN)
+        // =========================================================================
+        window.joinMultiplayerRoom = async function() {
+            SFX.click();
+            const pinInput = document.getElementById('input-join-pin').value.trim();
+            const nameInput = document.getElementById('input-join-name').value.trim();
+
+            if (!pinInput || pinInput.length < 4) {
+                showToast("Digite o PIN de 6 dígitos da sala!", "error");
+                return;
+            }
+            if (!nameInput) {
+                showToast("Digite seu nome ou apelido!", "error");
+                return;
+            }
+
+            if (!firebaseReady || !db) {
+                showToast("Conexão multiplayer indisponível no momento. Use o Modo Prática Individual!", "error");
+                return;
+            }
+
+            try {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'leininger_rooms', pinInput);
+                const roomSnap = await getDoc(roomRef);
+
+                if (!roomSnap.exists()) {
+                    showToast("Sala não encontrada! Verifique o PIN com o apresentador.", "error");
+                    return;
+                }
+
+                const pId = currentUser ? currentUser.uid : `player_${Date.now()}`;
+                const avatar = AVATARS[Math.floor(Math.random() * AVATARS.length)];
+
+                gameState.mode = 'player';
+                gameState.roomPin = pinInput;
+                gameState.playerId = pId;
+                gameState.playerName = nameInput;
+                gameState.playerAvatar = avatar;
+                gameState.score = 0;
+                gameState.correctCount = 0;
+
+                // Registrar jogador na coleção da sala
+                const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', `leininger_players_${pinInput}`, pId);
+                await setDoc(playerDocRef, {
+                    id: pId,
+                    name: nameInput,
+                    avatar: avatar,
+                    score: 0,
+                    correctCount: 0,
+                    lastAnswer: null,
+                    lastQuestionIndex: -1,
+                    joinedAt: Date.now()
+                });
+
+                document.getElementById('header-pin-text').textContent = pinInput;
+                document.getElementById('header-room-badge').classList.remove('hidden');
+                document.getElementById('header-room-badge').classList.add('flex');
+
+                document.getElementById('player-avatar-badge').textContent = avatar;
+                document.getElementById('player-wait-name').textContent = nameInput;
+                switchView('view-player-wait');
+
+                // Ouvir mudanças de estado da sala em tempo real
+                gameState.unsubscribeRoom = onSnapshot(roomRef, (docSnap) => {
+                    if (!docSnap.exists()) return;
+                    const data = docSnap.data();
+                    handleRoomStateChangeForPlayer(data);
+                }, (err) => {
+                    console.error("Erro no listener da sala:", err);
+                });
+
+                // Ouvir ranking dos jogadores
+                const playersCol = collection(db, 'artifacts', appId, 'public', 'data', `leininger_players_${pinInput}`);
+                gameState.unsubscribePlayers = onSnapshot(playersCol, (snap) => {
+                    snap.forEach(d => {
+                        gameState.playersMap[d.id] = d.data();
+                    });
+                }, () => {});
+
+            } catch (e) {
+                console.error(e);
+                showToast("Erro ao entrar na sala. Tente novamente.", "error");
+            }
+        };
+
+        function handleRoomStateChangeForPlayer(roomData) {
+            const { status, currentQIndex, questionCount, timePerQuestion } = roomData;
+            gameState.questions = QUESTIONS_DB.slice(0, questionCount || 25);
+            gameState.timePerQuestion = timePerQuestion || 20;
+
+            if (status === 'lobby') {
+                switchView('view-player-wait');
+            } else if (status === 'question') {
+                if (gameState.lastRenderedStatus !== 'question' || gameState.lastRenderedQIndex !== currentQIndex) {
+                    gameState.lastRenderedStatus = 'question';
+                    gameState.lastRenderedQIndex = currentQIndex;
+                    gameState.currentQIndex = currentQIndex;
+                    renderQuestionScreen();
+                }
+            } else if (status === 'reveal') {
+                if (gameState.lastRenderedStatus !== 'reveal' || gameState.lastRenderedQIndex !== currentQIndex) {
+                    gameState.lastRenderedStatus = 'reveal';
+                    gameState.lastRenderedQIndex = currentQIndex;
+                    gameState.currentQIndex = currentQIndex;
+                    showRoundResultScreen();
+                }
+            } else if (status === 'podium') {
+                if (gameState.lastRenderedStatus !== 'podium') {
+                    gameState.lastRenderedStatus = 'podium';
+                    showFinalPodium();
+                }
+            }
+        }
+
+        // =========================================================================
+        // 9. MECÂNICA DA PERGUNTA, TEMPORIZADOR E RESPOSTAS
+        // =========================================================================
+        function renderQuestionScreen() {
+            clearInterval(gameState.timerInterval);
+            gameState.hasAnsweredCurrent = false;
+            gameState.selectedOption = null;
+            gameState.timeRemaining = gameState.timePerQuestion;
+
+            const qObj = gameState.questions[gameState.currentQIndex];
+            if (!qObj) {
+                showFinalPodium();
+                return;
+            }
+
+            switchView('view-quiz-active');
+
+            document.getElementById('quiz-q-current').textContent = gameState.currentQIndex + 1;
+            document.getElementById('quiz-q-total').textContent = gameState.questions.length;
+            document.getElementById('quiz-category-tag').textContent = qObj.category;
+            document.getElementById('quiz-question-text').textContent = qObj.q;
+
+            // Preencher os 4 botões
+            qObj.options.forEach((optText, idx) => {
+                const btn = document.getElementById(`opt-btn-${idx}`);
+                const span = document.getElementById(`opt-text-${idx}`);
+                span.textContent = optText;
+                btn.disabled = (gameState.mode === 'host'); // Host apenas exibe na tela
+                btn.classList.remove('ring-4', 'ring-white', 'opacity-40');
+            });
+
+            document.getElementById('player-answered-banner').classList.add('hidden');
+
+            if (gameState.mode === 'host') {
+                document.getElementById('host-skip-timer-box').classList.remove('hidden');
+                document.getElementById('quiz-status-label').textContent = 'Respostas';
+                updateLiveAnswerCounter();
+                simulateBotsAnswering();
+            } else {
+                document.getElementById('host-skip-timer-box').classList.add('hidden');
+                document.getElementById('quiz-status-label').textContent = 'Seus Pontos';
+                document.getElementById('quiz-status-value').textContent = gameState.score.toLocaleString('pt-BR');
+            }
+
+            // Iniciar contagem regressiva
+            const timerEl = document.getElementById('quiz-timer-circle');
+            timerEl.textContent = gameState.timeRemaining;
+            timerEl.classList.remove('timer-urgent');
+
+            gameState.timerInterval = setInterval(() => {
+                gameState.timeRemaining--;
+                timerEl.textContent = Math.max(0, gameState.timeRemaining);
+
+                if (gameState.timeRemaining <= 5 && gameState.timeRemaining > 0) {
+                    timerEl.classList.add('timer-urgent');
+                    SFX.urgentTick();
+                } else if (gameState.timeRemaining > 5) {
+                    SFX.tick();
+                }
+
+                if (gameState.timeRemaining <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    if (gameState.mode === 'host') {
+                        hostForceReveal();
+                    } else if (gameState.mode === 'solo') {
+                        showRoundResultScreen();
+                    }
+                }
+            }, 1000);
+        }
+
+        function simulateBotsAnswering() {
+            const qObj = gameState.questions[gameState.currentQIndex];
+            Object.values(gameState.playersMap).forEach(p => {
+                if (!p.isBot) return;
+                const delay = 1500 + Math.random() * ((gameState.timePerQuestion - 3) * 1000);
+                setTimeout(() => {
+                    if (gameState.currentQIndex !== gameState.questions.indexOf(qObj)) return;
+                    const isRight = Math.random() < 0.72; // 72% chance de acerto dos bots
+                    const chosen = isRight ? qObj.correct : Math.floor(Math.random() * 4);
+                    const speedFactor = Math.max(0.4, (gameState.timePerQuestion - (delay / 1000)) / gameState.timePerQuestion);
+                    const pts = chosen === qObj.correct ? Math.round(500 + 500 * speedFactor) : 0;
+
+                    p.lastAnswer = chosen;
+                    p.lastQuestionIndex = gameState.currentQIndex;
+                    p.score = (p.score || 0) + pts;
+                    if (chosen === qObj.correct) p.correctCount = (p.correctCount || 0) + 1;
+                    updateLiveAnswerCounter();
+                }, delay);
+            });
+        }
+
+        function updateLiveAnswerCounter() {
+            if (gameState.mode !== 'host') return;
+            const players = Object.values(gameState.playersMap);
+            const answered = players.filter(p => p.lastQuestionIndex === gameState.currentQIndex).length;
+            document.getElementById('quiz-status-value').textContent = `${answered} / ${players.length}`;
+
+            // Se todos responderam, encerra automaticamente após 1s
+            if (players.length > 0 && answered === players.length && gameState.timeRemaining > 1) {
+                clearInterval(gameState.timerInterval);
+                setTimeout(() => hostForceReveal(), 900);
+            }
+        }
+
+        window.submitAnswer = async function(optionIndex) {
+            if (gameState.mode === 'host' || gameState.hasAnsweredCurrent) return;
+
+            SFX.click();
+            gameState.hasAnsweredCurrent = true;
+            gameState.selectedOption = optionIndex;
+
+            const qObj = gameState.questions[gameState.currentQIndex];
+            const isCorrect = optionIndex === qObj.correct;
+
+            // Destacar botão escolhido e desabilitar os demais
+            for (let i = 0; i < 4; i++) {
+                const btn = document.getElementById(`opt-btn-${i}`);
+                btn.disabled = true;
+                if (i === optionIndex) {
+                    btn.classList.add('ring-4', 'ring-white');
+                } else {
+                    btn.classList.add('opacity-40');
+                }
+            }
+
+            // Calcular pontuação estilo Kahoot (500 base + até 500 pela rapidez + bônus streak)
+            let earnedPoints = 0;
+            if (isCorrect) {
+                const timeRatio = Math.max(0, gameState.timeRemaining / gameState.timePerQuestion);
+                const streakBonus = Math.min(gameState.streak * 50, 250);
+                earnedPoints = Math.round(500 + (500 * timeRatio) + streakBonus);
+                gameState.score += earnedPoints;
+                gameState.correctCount++;
+                gameState.streak++;
+            } else {
+                gameState.streak = 0;
+            }
+
+            if (gameState.mode === 'solo') {
+                clearInterval(gameState.timerInterval);
+                setTimeout(() => showRoundResultScreen(earnedPoints), 450);
+            } else if (gameState.mode === 'player') {
+                document.getElementById('player-answered-banner').classList.remove('hidden');
+                document.getElementById('quiz-status-value').textContent = gameState.score.toLocaleString('pt-BR');
+
+                // Enviar resposta ao Firestore
+                if (firebaseReady && db && gameState.roomPin && gameState.playerId) {
+                    try {
+                        const playerRef = doc(db, 'artifacts', appId, 'public', 'data', `leininger_players_${gameState.roomPin}`, gameState.playerId);
+                        await updateDoc(playerRef, {
+                            score: gameState.score,
+                            correctCount: gameState.correctCount,
+                            lastAnswer: optionIndex,
+                            lastQuestionIndex: gameState.currentQIndex,
+                            lastPoints: earnedPoints
+                        });
+                    } catch (e) {
+                        console.error("Erro ao enviar resposta:", e);
+                    }
+                }
+            }
+        };
+
+        window.hostForceReveal = async function() {
+            clearInterval(gameState.timerInterval);
+            await hostPushQuestionState('reveal', gameState.currentQIndex);
+            showRoundResultScreen();
+        };
+
+        // =========================================================================
+        // 10. TELA DE RESULTADO DA RODADA & GRÁFICO DE BARRAS
+        // =========================================================================
+        function showRoundResultScreen(soloPoints = 0) {
+            clearInterval(gameState.timerInterval);
+            switchView('view-round-result');
+
+            const qObj = gameState.questions[gameState.currentQIndex];
+            const iconBadge = document.getElementById('round-icon-badge');
+            const titleEl = document.getElementById('round-result-title');
+            const subEl = document.getElementById('round-result-subtitle');
+
+            document.getElementById('round-correct-text').textContent = qObj.options[qObj.correct];
+            document.getElementById('round-explanation-text').textContent = qObj.explanation;
+
+            if (gameState.mode === 'host') {
+                iconBadge.className = "w-16 h-16 rounded-2xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-3xl mx-auto mb-3";
+                iconBadge.innerHTML = '<i class="fa-solid fa-chart-column"></i>';
+                titleEl.textContent = "Tempo Esgotado!";
+                subEl.textContent = `Questão ${gameState.currentQIndex + 1} de ${gameState.questions.length}`;
+                SFX.correct();
+            } else {
+                const isCorrect = gameState.selectedOption === qObj.correct;
+                const pts = gameState.mode === 'solo'
+                    ? soloPoints
+                    : (gameState.playersMap[gameState.playerId]?.lastPoints || 0);
+
+                if (isCorrect) {
+                    SFX.correct();
+                    iconBadge.className = "w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl mx-auto mb-3";
+                    iconBadge.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    titleEl.textContent = "Resposta Correta! 🎉";
+                    subEl.textContent = `+${pts} pontos • Total: ${gameState.score.toLocaleString('pt-BR')} pts`;
+                    subEl.className = "text-emerald-300 font-bold text-sm sm:text-base";
+                } else {
+                    SFX.wrong();
+                    iconBadge.className = "w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-3xl mx-auto mb-3";
+                    iconBadge.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                    titleEl.textContent = gameState.selectedOption === null ? "Tempo Esgotado! ⏰" : "Não foi dessa vez!";
+                    subEl.textContent = `Total acumulado: ${gameState.score.toLocaleString('pt-BR')} pts`;
+                    subEl.className = "text-rose-300 font-semibold text-sm sm:text-base";
+                }
+            }
+
+            // Calcular barras de distribuição das respostas
+            const counts = [0, 0, 0, 0];
+            if (gameState.mode === 'solo') {
+                if (gameState.selectedOption !== null) counts[gameState.selectedOption] = 1;
+            } else {
+                Object.values(gameState.playersMap).forEach(p => {
+                    if (p.lastQuestionIndex === gameState.currentQIndex && p.lastAnswer !== null && p.lastAnswer >= 0 && p.lastAnswer <= 3) {
+                        counts[p.lastAnswer]++;
+                    }
+                });
+            }
+
+            const maxCount = Math.max(...counts, 1);
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`bar-count-${i}`).textContent = counts[i];
+                const pct = Math.max(12, Math.round((counts[i] / maxCount) * 100));
+                const barEl = document.getElementById(`bar-fill-${i}`);
+                barEl.style.height = `${pct}%`;
+                barEl.style.opacity = (i === qObj.correct) ? '1' : '0.45';
+            }
+
+            // Renderizar Top 5 Placar Parcial
+            const lbBox = document.getElementById('round-leaderboard-box');
+            const lbList = document.getElementById('round-leaderboard-list');
+
+            if (gameState.mode === 'solo') {
+                lbBox.classList.add('hidden');
+            } else {
+                lbBox.classList.remove('hidden');
+                const sorted = Object.values(gameState.playersMap)
+                    .sort((a, b) => (b.score || 0) - (a.score || 0))
+                    .slice(0, 5);
+
+                lbList.innerHTML = sorted.map((p, idx) => `
+                    <div class="flex items-center justify-between bg-slate-900/80 px-4 py-2.5 rounded-xl border ${p.id === gameState.playerId ? 'border-emerald-400' : 'border-white/5'}">
+                        <div class="flex items-center gap-3">
+                            <span class="font-display font-bold text-sm w-6 text-slate-400">#${idx + 1}</span>
+                            <span class="text-xl">${p.avatar || '🩺'}</span>
+                            <span class="font-bold text-sm">${escapeHTML(p.name)}</span>
+                        </div>
+                        <span class="font-display font-bold text-emerald-400 text-sm">${(p.score || 0).toLocaleString('pt-BR')} pts</span>
+                    </div>
+                `).join('');
+            }
+
+            // Controle do botão Avançar
+            const nextBtn = document.getElementById('btn-next-question');
+            const waitMsg = document.getElementById('player-wait-next-msg');
+            const isLast = gameState.currentQIndex >= gameState.questions.length - 1;
+
+            if (gameState.mode === 'player') {
+                nextBtn.classList.add('hidden');
+                waitMsg.classList.remove('hidden');
+            } else {
+                nextBtn.classList.remove('hidden');
+                waitMsg.classList.add('hidden');
+                nextBtn.innerHTML = isLast
+                    ? `<span>Ver Pódio Final 🏆</span><i class="fa-solid fa-trophy"></i>`
+                    : `<span>Próxima Questão</span><i class="fa-solid fa-arrow-right"></i>`;
+            }
+        }
+
+        window.advanceToNextQuestion = async function() {
+            SFX.click();
+            if (gameState.currentQIndex + 1 >= gameState.questions.length) {
+                if (gameState.mode === 'host') {
+                    await hostPushQuestionState('podium', gameState.currentQIndex);
+                }
+                showFinalPodium();
+            } else {
+                gameState.currentQIndex++;
+                if (gameState.mode === 'host') {
+                    await hostPushQuestionState('question', gameState.currentQIndex);
+                }
+                renderQuestionScreen();
+            }
+        };
+
+        // =========================================================================
+        // 11. PÓDIO FINAL E RANKING COMPLETO
+        // =========================================================================
+        function showFinalPodium() {
+            clearInterval(gameState.timerInterval);
+            switchView('view-podium');
+            SFX.podium();
+
+            // Disparar confetes
+            try {
+                confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+            } catch (e) {}
+
+            let ranking = [];
+            if (gameState.mode === 'solo') {
+                ranking = [{
+                    id: 'solo',
+                    name: 'Você (Prática)',
+                    avatar: '🩺',
+                    score: gameState.score,
+                    correctCount: gameState.correctCount
+                }];
+            } else {
+                ranking = Object.values(gameState.playersMap)
+                    .sort((a, b) => (b.score || 0) - (a.score || 0));
+            }
+
+            // Preencher os 3 lugares do pódio
+            [1, 2, 3].forEach(pos => {
+                const p = ranking[pos - 1];
+                const nameEl = document.getElementById(`podium-name-${pos}`);
+                const scoreEl = document.getElementById(`podium-score-${pos}`);
+                if (p) {
+                    nameEl.textContent = `${p.avatar || '🩺'} ${p.name}`;
+                    scoreEl.textContent = `${(p.score || 0).toLocaleString('pt-BR')} pts`;
+                } else {
+                    nameEl.textContent = "---";
+                    scoreEl.textContent = "0 pts";
+                }
+            });
+
+            // Preencher lista completa
+            const listEl = document.getElementById('final-ranking-list');
+            listEl.innerHTML = ranking.map((p, idx) => `
+                <div class="flex items-center justify-between bg-slate-900/90 px-4 py-3 rounded-xl border ${idx === 0 ? 'border-amber-400/60' : 'border-white/5'}">
+                    <div class="flex items-center gap-3">
+                        <span class="font-display font-extrabold text-base w-7 ${idx === 0 ? 'text-amber-400' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-slate-500'}">
+                            ${idx + 1}º
+                        </span>
+                        <span class="text-xl">${p.avatar || '🩺'}</span>
+                        <div>
+                            <div class="font-bold text-sm text-white">${escapeHTML(p.name)}</div>
+                            <div class="text-xs text-slate-400">${p.correctCount || 0} de ${gameState.questions.length} acertos</div>
+                        </div>
+                    </div>
+                    <span class="font-display font-extrabold text-emerald-400 text-base">
+                        ${(p.score || 0).toLocaleString('pt-BR')} pts
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function escapeHTML(str) {
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        // Preencher PIN automaticamente se vier via QR Code (?pin=123456)
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const urlPin = params.get('pin');
+            if (urlPin) {
+                document.getElementById('input-join-pin').value = urlPin;
+                document.getElementById('input-join-name').focus();
+                showToast(`PIN ${urlPin} preenchido! Digite seu nome para entrar.`, "info");
+            }
+        });
+    </script>
+</body>
+</html>
