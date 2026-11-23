@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- QRCode.js for easy mobile join -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- MQTT.js over WebSockets (WSS) for Universal Cross-Network Multiplayer (4G / Wi-Fi) -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <!-- Canvas Confetti for Podium -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
@@ -116,6 +118,12 @@
         </div>
 
         <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Indicador de Rede Multiplayer -->
+            <div id="net-status-pill" class="flex items-center gap-1.5 bg-slate-900/80 border border-white/15 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-slate-300" title="Status da Rede Multiplayer">
+                <span id="net-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                <span id="net-status-label">Conectando...</span>
+            </div>
+
             <!-- Badge de Status da Sala (visível quando ativo) -->
             <div id="header-room-badge" class="hidden items-center gap-2 bg-indigo-600/40 border border-indigo-400/40 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
@@ -606,13 +614,9 @@
     </main>
 
     <!-- ========================================================= -->
-    <!-- SCRIPT PRINCIPAL (FIREBASE + LÓGICA DO QUIZ + ÁUDIO)      -->
+    <!-- SCRIPT PRINCIPAL (MULTIPLAYER WSS + LÓGICA + ÁUDIO)       -->
     <!-- ========================================================= -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+    <script>
         // =========================================================================
         // 1. BANCO COMPLETO DE 25 PERGUNTAS SOBRE MADELEINE LEININGER
         // =========================================================================
@@ -923,36 +927,155 @@
         ];
 
         // =========================================================================
-        // 2. INICIALIZAÇÃO DO FIREBASE (MULTIPLAYER EM TEMPO REAL)
+        // 2. MOTOR MULTIPLAYER REDUNDANTE (MQTT OVER WSS + BROADCAST CHANNEL)
+        //    Funciona em 4G, Wi-Fi universitário e abas locais sem configuração!
         // =========================================================================
-        let db = null;
-        let auth = null;
-        let currentUser = null;
-        let firebaseReady = false;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'leininger-quiz-app';
+        const WSS_BROKERS = [
+            "wss://broker.emqx.io:8084/mqtt",
+            "wss://broker.hivemq.com:8884/mqtt",
+            "wss://test.mosquitto.org:8081/mqtt"
+        ];
 
-        async function initFirebase() {
-            try {
-                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                    const firebaseConfig = JSON.parse(__firebase_config);
-                    const app = initializeApp(firebaseConfig);
-                    auth = getAuth(app);
-                    db = getFirestore(app);
+        class RealtimeQuizBus {
+            constructor() {
+                this.client = null;
+                this.brokerIndex = 0;
+                this.connected = false;
+                this.bc = null;
+                this.subscribedPin = null;
+                this.onMessageCallback = null;
+                this.seenMsgIds = new Set();
 
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                    currentUser = auth.currentUser;
-                    firebaseReady = true;
+                // Canal local instantâneo (mesmo dispositivo / múltiplas abas)
+                try {
+                    this.bc = new BroadcastChannel('leininger_quiz_realtime_v1');
+                    this.bc.onmessage = (ev) => {
+                        if (ev.data) this._handleIncoming(ev.data);
+                    };
+                } catch (e) {}
+
+                this.connectNextBroker();
+            }
+
+            updateStatusUI(state, text) {
+                const dot = document.getElementById('net-status-dot');
+                const label = document.getElementById('net-status-label');
+                if (!dot || !label) return;
+                label.textContent = text;
+                if (state === 'online') {
+                    dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                } else if (state === 'connecting') {
+                    dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+                } else {
+                    dot.className = "w-2 h-2 rounded-full bg-indigo-400";
                 }
-            } catch (err) {
-                console.warn("Firebase rodando em modo fallback local:", err);
-                firebaseReady = false;
+            }
+
+            connectNextBroker() {
+                if (typeof mqtt === 'undefined') {
+                    this.updateStatusUI('local', 'Modo Local Ativo');
+                    return;
+                }
+
+                const url = WSS_BROKERS[this.brokerIndex % WSS_BROKERS.length];
+                this.updateStatusUI('connecting', 'Conectando...');
+
+                try {
+                    if (this.client) {
+                        try { this.client.end(true); } catch (e) {}
+                    }
+
+                    const clientId = 'lein_' + Math.random().toString(16).substring(2, 10) + '_' + Date.now().toString(36);
+                    this.client = mqtt.connect(url, {
+                        clientId: clientId,
+                        clean: true,
+                        connectTimeout: 5000,
+                        reconnectPeriod: 3000,
+                        keepalive: 25
+                    });
+
+                    this.client.on('connect', () => {
+                        this.connected = true;
+                        this.updateStatusUI('online', 'Online (4G/Wi-Fi)');
+                        if (this.subscribedPin) {
+                            this.client.subscribe(`unisaomiguel/leininger/room/${this.subscribedPin}/#`, { qos: 1 });
+                        }
+                    });
+
+                    this.client.on('message', (topic, payload) => {
+                        try {
+                            const data = JSON.parse(payload.toString());
+                            this._handleIncoming(data);
+                        } catch (e) {}
+                    });
+
+                    this.client.on('error', () => {
+                        this.connected = false;
+                        this.brokerIndex++;
+                        setTimeout(() => this.connectNextBroker(), 1500);
+                    });
+
+                    this.client.on('offline', () => {
+                        this.connected = false;
+                        this.updateStatusUI('connecting', 'Reconectando...');
+                    });
+                } catch (e) {
+                    this.brokerIndex++;
+                    setTimeout(() => this.connectNextBroker(), 2000);
+                }
+            }
+
+            subscribeRoom(pin, callback) {
+                this.subscribedPin = pin;
+                this.onMessageCallback = callback;
+                if (this.client && this.connected) {
+                    this.client.subscribe(`unisaomiguel/leininger/room/${pin}/#`, { qos: 1 });
+                }
+            }
+
+            publish(pin, subtopic, payloadObj, retain = false) {
+                const envelope = {
+                    ...payloadObj,
+                    _pin: pin,
+                    _msgId: Math.random().toString(36).substring(2, 10) + Date.now()
+                };
+                this.seenMsgIds.add(envelope._msgId);
+
+                // 1. Envia via BroadcastChannel (instantâneo para abas locais)
+                if (this.bc) {
+                    try { this.bc.postMessage(envelope); } catch (e) {}
+                }
+
+                // 2. Envia via MQTT WSS (funciona entre celulares 4G, Wi-Fi, PC)
+                if (this.client && this.connected) {
+                    try {
+                        this.client.publish(
+                            `unisaomiguel/leininger/room/${pin}/${subtopic}`,
+                            JSON.stringify(envelope),
+                            { qos: 1, retain: retain }
+                        );
+                    } catch (e) {}
+                }
+            }
+
+            _handleIncoming(data) {
+                if (!data || !data._pin) return;
+                if (this.subscribedPin && data._pin !== this.subscribedPin) return;
+                if (data._msgId && this.seenMsgIds.has(data._msgId)) return;
+                if (data._msgId) {
+                    this.seenMsgIds.add(data._msgId);
+                    if (this.seenMsgIds.size > 400) {
+                        const first = this.seenMsgIds.values().next().value;
+                        this.seenMsgIds.delete(first);
+                    }
+                }
+                if (this.onMessageCallback) {
+                    this.onMessageCallback(data);
+                }
             }
         }
-        initFirebase();
+
+        const netBus = new RealtimeQuizBus();
 
         // =========================================================================
         // 3. SISTEMA DE EFEITOS SONOROS (WEB AUDIO API - SEM ARQUIVOS EXTERNOS)
@@ -1033,13 +1156,13 @@
             timePerQuestion: 20,
             timeRemaining: 20,
             timerInterval: null,
+            hostSyncInterval: null,
             hasAnsweredCurrent: false,
             selectedOption: null,
-            unsubscribeRoom: null,
-            unsubscribePlayers: null,
-            playersMap: {}, // { playerId: { name, avatar, score, correctCount, lastAnswer, lastPoints } }
+            playersMap: {}, // { playerId: { name, avatar, score, correctCount, lastAnswer, lastPoints, lastQuestionIndex } }
             lastRenderedStatus: null,
-            lastRenderedQIndex: -1
+            lastRenderedQIndex: -1,
+            currentRoomStatus: 'lobby'
         };
 
         // =========================================================================
@@ -1109,8 +1232,9 @@
 
         window.returnHome = function() {
             clearInterval(gameState.timerInterval);
-            if (gameState.unsubscribeRoom) gameState.unsubscribeRoom();
-            if (gameState.unsubscribePlayers) gameState.unsubscribePlayers();
+            clearInterval(gameState.hostSyncInterval);
+            netBus.subscribedPin = null;
+            netBus.onMessageCallback = null;
             gameState = {
                 mode: null,
                 roomPin: null,
@@ -1125,13 +1249,13 @@
                 timePerQuestion: 20,
                 timeRemaining: 20,
                 timerInterval: null,
+                hostSyncInterval: null,
                 hasAnsweredCurrent: false,
                 selectedOption: null,
-                unsubscribeRoom: null,
-                unsubscribePlayers: null,
                 playersMap: {},
                 lastRenderedStatus: null,
-                lastRenderedQIndex: -1
+                lastRenderedQIndex: -1,
+                currentRoomStatus: 'lobby'
             };
             document.getElementById('header-room-badge').classList.add('hidden');
             document.getElementById('header-room-badge').classList.remove('flex');
@@ -1200,12 +1324,14 @@
         // =========================================================================
         // 7. MODO HOST / APRESENTADOR (MULTIPLAYER)
         // =========================================================================
-        window.startAsHost = async function() {
+        window.startAsHost = function() {
             SFX.click();
             const pin = Math.floor(100000 + Math.random() * 900000).toString();
             gameState.mode = 'host';
             gameState.roomPin = pin;
             gameState.playersMap = {};
+            gameState.currentRoomStatus = 'lobby';
+            gameState.currentQIndex = 0;
 
             document.getElementById('lobby-pin-display').textContent = pin;
             document.getElementById('header-pin-text').textContent = pin;
@@ -1231,42 +1357,59 @@
             switchView('view-host-lobby');
             renderLobbyPlayers();
 
-            // Persistir sala no Firestore se disponível
-            if (firebaseReady && db && currentUser) {
-                try {
-                    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'leininger_rooms', pin);
-                    await setDoc(roomRef, {
-                        pin: pin,
-                        hostId: currentUser.uid,
-                        status: 'lobby', // 'lobby' | 'question' | 'reveal' | 'podium'
-                        currentQIndex: 0,
-                        questionCount: 25,
-                        timePerQuestion: 20,
-                        createdAt: Date.now()
-                    });
-
-                    // Ouvir jogadores entrando em tempo real
-                    const playersCol = collection(db, 'artifacts', appId, 'public', 'data', `leininger_players_${pin}`);
-                    gameState.unsubscribePlayers = onSnapshot(playersCol, (snapshot) => {
-                        snapshot.docChanges().forEach((change) => {
-                            const pData = change.doc.data();
-                            if (change.type === 'removed') {
-                                delete gameState.playersMap[change.doc.id];
-                            } else {
-                                gameState.playersMap[change.doc.id] = pData;
-                            }
-                        });
-                        renderLobbyPlayers();
+            // Inscrever na sala e escutar entradas e respostas dos jogadores
+            netBus.subscribeRoom(pin, (msg) => {
+                if (msg.type === 'PLAYER_JOIN') {
+                    const p = msg.player;
+                    if (!gameState.playersMap[p.id]) {
+                        gameState.playersMap[p.id] = p;
+                        showToast(`${p.avatar || '🩺'} ${p.name} entrou na sala!`, "success");
+                    } else {
+                        gameState.playersMap[p.id] = { ...gameState.playersMap[p.id], name: p.name, avatar: p.avatar };
+                    }
+                    renderLobbyPlayers();
+                    updateLiveAnswerCounter();
+                    // Reenvia estado atual da sala imediatamente para sincronizar o novo jogador
+                    broadcastHostState();
+                } else if (msg.type === 'PLAYER_ANSWER') {
+                    const p = gameState.playersMap[msg.playerId];
+                    if (p) {
+                        p.score = msg.score;
+                        p.correctCount = msg.correctCount;
+                        p.lastAnswer = msg.lastAnswer;
+                        p.lastQuestionIndex = msg.lastQuestionIndex;
+                        p.lastPoints = msg.lastPoints;
                         updateLiveAnswerCounter();
-                    }, (err) => {
-                        console.error("Erro ao sincronizar jogadores:", err);
-                    });
-                } catch (e) {
-                    console.error("Erro ao criar sala na nuvem:", e);
-                    showToast("Sala criada em modo local!", "info");
+                    }
+                } else if (msg.type === 'PING_ROOM') {
+                    broadcastHostState();
                 }
-            }
+            });
+
+            // Publica estado inicial retido no broker e mantém heartbeat a cada 2.5s
+            broadcastHostState();
+            clearInterval(gameState.hostSyncInterval);
+            gameState.hostSyncInterval = setInterval(() => {
+                if (gameState.mode === 'host') {
+                    broadcastHostState();
+                }
+            }, 2500);
         };
+
+        function broadcastHostState() {
+            if (gameState.mode !== 'host' || !gameState.roomPin) return;
+            const count = parseInt(document.getElementById('host-count-select')?.value, 10) || 25;
+            const timeSec = parseInt(document.getElementById('host-time-select')?.value, 10) || 20;
+
+            netBus.publish(gameState.roomPin, 'state', {
+                type: 'ROOM_STATE',
+                status: gameState.currentRoomStatus,
+                currentQIndex: gameState.currentQIndex,
+                questionCount: gameState.questions.length || count,
+                timePerQuestion: gameState.timePerQuestion || timeSec,
+                players: Object.values(gameState.playersMap)
+            }, true);
+        }
 
         function renderLobbyPlayers() {
             const grid = document.getElementById('lobby-players-grid');
@@ -1338,14 +1481,24 @@
                     });
                 } catch (e) {
                     console.error("Erro ao atualizar sala:", e);
-                }
-            }
-        }
+        window.hostStartQuiz = function() {
+            SFX.click();
+            const count = parseInt(document.getElementById('host-count-select').value, 10) || 25;
+            const timeSec = parseInt(document.getElementById('host-time-select').value, 10) || 20;
+
+            gameState.questions = QUESTIONS_DB.slice(0, count);
+            gameState.timePerQuestion = timeSec;
+            gameState.currentQIndex = 0;
+            gameState.currentRoomStatus = 'question';
+
+            broadcastHostState();
+            renderQuestionScreen();
+        };
 
         // =========================================================================
         // 8. MODO JOGADOR (ENTRAR PELO CELULAR COM PIN)
         // =========================================================================
-        window.joinMultiplayerRoom = async function() {
+        window.joinMultiplayerRoom = function() {
             SFX.click();
             const pinInput = document.getElementById('input-join-pin').value.trim();
             const nameInput = document.getElementById('input-join-name').value.trim();
@@ -1359,34 +1512,45 @@
                 return;
             }
 
-            if (!firebaseReady || !db) {
-                showToast("Conexão multiplayer indisponível no momento. Use o Modo Prática Individual!", "error");
-                return;
-            }
+            const pId = 'player_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+            const avatar = AVATARS[Math.floor(Math.random() * AVATARS.length)];
 
-            try {
-                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'leininger_rooms', pinInput);
-                const roomSnap = await getDoc(roomRef);
+            gameState.mode = 'player';
+            gameState.roomPin = pinInput;
+            gameState.playerId = pId;
+            gameState.playerName = nameInput;
+            gameState.playerAvatar = avatar;
+            gameState.score = 0;
+            gameState.correctCount = 0;
+            gameState.lastRenderedStatus = null;
+            gameState.lastRenderedQIndex = -1;
 
-                if (!roomSnap.exists()) {
-                    showToast("Sala não encontrada! Verifique o PIN com o apresentador.", "error");
-                    return;
+            document.getElementById('header-pin-text').textContent = pinInput;
+            document.getElementById('header-room-badge').classList.remove('hidden');
+            document.getElementById('header-room-badge').classList.add('flex');
+
+            document.getElementById('player-avatar-badge').textContent = avatar;
+            document.getElementById('player-wait-name').textContent = nameInput;
+            switchView('view-player-wait');
+
+            // Escuta atualizações do Host em tempo real
+            netBus.subscribeRoom(pinInput, (msg) => {
+                if (msg.type === 'ROOM_STATE') {
+                    if (Array.isArray(msg.players)) {
+                        const updatedMap = {};
+                        msg.players.forEach(pl => {
+                            updatedMap[pl.id] = pl;
+                        });
+                        gameState.playersMap = updatedMap;
+                    }
+                    handleRoomStateChangeForPlayer(msg);
                 }
+            });
 
-                const pId = currentUser ? currentUser.uid : `player_${Date.now()}`;
-                const avatar = AVATARS[Math.floor(Math.random() * AVATARS.length)];
-
-                gameState.mode = 'player';
-                gameState.roomPin = pinInput;
-                gameState.playerId = pId;
-                gameState.playerName = nameInput;
-                gameState.playerAvatar = avatar;
-                gameState.score = 0;
-                gameState.correctCount = 0;
-
-                // Registrar jogador na coleção da sala
-                const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', `leininger_players_${pinInput}`, pId);
-                await setDoc(playerDocRef, {
+            // Anuncia entrada do jogador ao Host (e reforça 2x para garantir entrega)
+            const joinPayload = {
+                type: 'PLAYER_JOIN',
+                player: {
                     id: pId,
                     name: nameInput,
                     avatar: avatar,
@@ -1394,38 +1558,17 @@
                     correctCount: 0,
                     lastAnswer: null,
                     lastQuestionIndex: -1,
-                    joinedAt: Date.now()
-                });
+                    lastPoints: 0
+                }
+            };
+            netBus.publish(pinInput, `join/${pId}`, joinPayload, false);
+            setTimeout(() => {
+                if (gameState.mode === 'player' && gameState.roomPin === pinInput) {
+                    netBus.publish(pinInput, `join/${pId}`, joinPayload, false);
+                }
+            }, 1200);
 
-                document.getElementById('header-pin-text').textContent = pinInput;
-                document.getElementById('header-room-badge').classList.remove('hidden');
-                document.getElementById('header-room-badge').classList.add('flex');
-
-                document.getElementById('player-avatar-badge').textContent = avatar;
-                document.getElementById('player-wait-name').textContent = nameInput;
-                switchView('view-player-wait');
-
-                // Ouvir mudanças de estado da sala em tempo real
-                gameState.unsubscribeRoom = onSnapshot(roomRef, (docSnap) => {
-                    if (!docSnap.exists()) return;
-                    const data = docSnap.data();
-                    handleRoomStateChangeForPlayer(data);
-                }, (err) => {
-                    console.error("Erro no listener da sala:", err);
-                });
-
-                // Ouvir ranking dos jogadores
-                const playersCol = collection(db, 'artifacts', appId, 'public', 'data', `leininger_players_${pinInput}`);
-                gameState.unsubscribePlayers = onSnapshot(playersCol, (snap) => {
-                    snap.forEach(d => {
-                        gameState.playersMap[d.id] = d.data();
-                    });
-                }, () => {});
-
-            } catch (e) {
-                console.error(e);
-                showToast("Erro ao entrar na sala. Tente novamente.", "error");
-            }
+            showToast(`Conectado à sala ${pinInput}!`, "success");
         };
 
         function handleRoomStateChangeForPlayer(roomData) {
@@ -1603,27 +1746,34 @@
                 document.getElementById('player-answered-banner').classList.remove('hidden');
                 document.getElementById('quiz-status-value').textContent = gameState.score.toLocaleString('pt-BR');
 
-                // Enviar resposta ao Firestore
-                if (firebaseReady && db && gameState.roomPin && gameState.playerId) {
-                    try {
-                        const playerRef = doc(db, 'artifacts', appId, 'public', 'data', `leininger_players_${gameState.roomPin}`, gameState.playerId);
-                        await updateDoc(playerRef, {
-                            score: gameState.score,
-                            correctCount: gameState.correctCount,
-                            lastAnswer: optionIndex,
-                            lastQuestionIndex: gameState.currentQIndex,
-                            lastPoints: earnedPoints
-                        });
-                    } catch (e) {
-                        console.error("Erro ao enviar resposta:", e);
-                    }
+                // Atualiza mapa local e envia resposta em tempo real ao Host
+                const answerPayload = {
+                    type: 'PLAYER_ANSWER',
+                    playerId: gameState.playerId,
+                    score: gameState.score,
+                    correctCount: gameState.correctCount,
+                    lastAnswer: optionIndex,
+                    lastQuestionIndex: gameState.currentQIndex,
+                    lastPoints: earnedPoints
+                };
+
+                if (gameState.playersMap[gameState.playerId]) {
+                    Object.assign(gameState.playersMap[gameState.playerId], answerPayload);
                 }
+
+                netBus.publish(gameState.roomPin, `ans/${gameState.playerId}`, answerPayload, false);
+                setTimeout(() => {
+                    if (gameState.mode === 'player') {
+                        netBus.publish(gameState.roomPin, `ans/${gameState.playerId}`, answerPayload, false);
+                    }
+                }, 700);
             }
         };
 
-        window.hostForceReveal = async function() {
+        window.hostForceReveal = function() {
             clearInterval(gameState.timerInterval);
-            await hostPushQuestionState('reveal', gameState.currentQIndex);
+            gameState.currentRoomStatus = 'reveal';
+            broadcastHostState();
             showRoundResultScreen();
         };
 
@@ -1731,19 +1881,19 @@
                     ? `<span>Ver Pódio Final 🏆</span><i class="fa-solid fa-trophy"></i>`
                     : `<span>Próxima Questão</span><i class="fa-solid fa-arrow-right"></i>`;
             }
-        }
-
-        window.advanceToNextQuestion = async function() {
+        window.advanceToNextQuestion = function() {
             SFX.click();
             if (gameState.currentQIndex + 1 >= gameState.questions.length) {
                 if (gameState.mode === 'host') {
-                    await hostPushQuestionState('podium', gameState.currentQIndex);
+                    gameState.currentRoomStatus = 'podium';
+                    broadcastHostState();
                 }
                 showFinalPodium();
             } else {
                 gameState.currentQIndex++;
                 if (gameState.mode === 'host') {
-                    await hostPushQuestionState('question', gameState.currentQIndex);
+                    gameState.currentRoomStatus = 'question';
+                    broadcastHostState();
                 }
                 renderQuestionScreen();
             }
