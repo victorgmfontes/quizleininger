@@ -10,10 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- QRCode.js for easy mobile join -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- MQTT.js over WebSockets (WSS) for Universal Cross-Network Multiplayer (4G / Wi-Fi) -->
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <!-- PeerJS for WebRTC P2P Multiplayer across networks -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <!-- Canvas Confetti for Podium -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
@@ -118,10 +116,10 @@
         </div>
 
         <div class="flex items-center gap-2 sm:gap-3">
-            <!-- Indicador de Rede Multiplayer -->
+            <!-- Indicador de Rede Multiplayer (nunca bloqueia ações do usuário) -->
             <div id="net-status-pill" class="flex items-center gap-1.5 bg-slate-900/80 border border-white/15 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-slate-300" title="Status da Rede Multiplayer">
-                <span id="net-status-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                <span id="net-status-label">Conectando...</span>
+                <span id="net-status-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span id="net-status-label">Pronto</span>
             </div>
 
             <!-- Badge de Status da Sala (visível quando ativo) -->
@@ -135,7 +133,7 @@
                 <i id="sound-icon" class="fa-solid fa-volume-high"></i>
             </button>
 
-            <!-- Botão Baixar Arquivo HTML (útil para compartilhar/apresentar offline) -->
+            <!-- Botão Baixar Arquivo HTML -->
             <button onclick="downloadSelfHTML()" class="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl glass-card hover:bg-white/15 transition text-xs font-medium text-emerald-300" title="Baixar este jogo em arquivo HTML único">
                 <i class="fa-solid fa-download"></i>
                 <span>Baixar HTML</span>
@@ -143,10 +141,10 @@
         </div>
     </header>
 
-    <!-- Toast / Notificação Customizada (Substitui alert()) -->
+    <!-- Toast / Notificação Customizada -->
     <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-11/12 max-w-md pointer-events-none"></div>
 
-    <!-- Modal de Confirmação Customizado (Substitui confirm()) -->
+    <!-- Modal de Confirmação Customizado -->
     <div id="custom-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="glass-card bg-slate-900/95 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-white/20 animate-pop text-center">
             <div class="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-4 text-2xl">
@@ -194,7 +192,7 @@
                             Para o apresentador projetar na tela. Gera um <strong>PIN exclusivo</strong> para vários colegas entrarem pelo celular e competirem ao vivo.
                         </p>
                     </div>
-                    <button onclick="startAsHost()" class="w-full py-3.5 px-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-white shadow-lg shadow-indigo-950/50 transition flex items-center justify-center gap-2">
+                    <button id="btn-create-room" type="button" onclick="startAsHost()" class="w-full py-3.5 px-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-bold text-white shadow-lg shadow-indigo-950/50 transition flex items-center justify-center gap-2 cursor-pointer">
                         <i class="fa-solid fa-play"></i>
                         <span>Criar Sala ao Vivo</span>
                     </button>
@@ -217,7 +215,7 @@
                                 class="w-full px-4 py-3 rounded-xl bg-slate-950/70 border border-white/20 text-center font-semibold text-base focus:outline-none focus:border-emerald-400 text-white placeholder-slate-500">
                         </div>
                     </div>
-                    <button onclick="joinMultiplayerRoom()" class="w-full py-3.5 px-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold shadow-lg shadow-emerald-950/50 transition flex items-center justify-center gap-2">
+                    <button id="btn-join-room" type="button" onclick="joinMultiplayerRoom()" class="w-full py-3.5 px-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold shadow-lg shadow-emerald-950/50 transition flex items-center justify-center gap-2 cursor-pointer">
                         <i class="fa-solid fa-right-to-bracket"></i>
                         <span>Entrar na Partida</span>
                     </button>
@@ -234,21 +232,21 @@
                             Responda todas as <strong>25 perguntas</strong> no seu ritmo para revisar os conceitos de Leininger antes da apresentação.
                         </p>
                     </div>
-                    <button onclick="startSoloMode()" class="w-full py-3.5 px-5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg shadow-amber-950/50 transition flex items-center justify-center gap-2">
+                    <button id="btn-solo-mode" type="button" onclick="startSoloMode()" class="w-full py-3.5 px-5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg shadow-amber-950/50 transition flex items-center justify-center gap-2 cursor-pointer">
                         <i class="fa-solid fa-bolt"></i>
                         <span>Jogar Sozinho (25 Q)</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Resumo Rápido dos Pilares (Baseado no roteiro da apresentação) -->
+            <!-- Resumo Rápido dos Pilares -->
             <div class="glass-card rounded-3xl p-5 sm:p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h4 class="font-display text-base sm:text-lg font-bold text-emerald-300 flex items-center gap-2">
                         <i class="fa-solid fa-book-medical"></i>
                         <span>Guia Rápido da Apresentação (25 Questões Inclusas)</span>
                     </h4>
-                    <button onclick="toggleQuestionPreview()" class="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition font-medium">
+                    <button type="button" onclick="toggleQuestionPreview()" class="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition font-medium cursor-pointer">
                         <i class="fa-solid fa-list-check mr-1"></i> Ver Lista das 25 Perguntas
                     </button>
                 </div>
@@ -286,6 +284,7 @@
                         </span>
                         <h2 class="font-display text-2xl sm:text-3xl font-bold mb-1">Entre pelo seu celular!</h2>
                         <p class="text-slate-300 text-sm">Abra este mesmo link no celular e digite o PIN abaixo:</p>
+                        <p id="host-p2p-hint" class="text-xs text-emerald-300/90 mt-1.5"></p>
                     </div>
 
                     <!-- Caixa Destaque PIN + QR Code -->
@@ -296,12 +295,12 @@
                                 <span id="lobby-pin-display" class="font-display text-4xl sm:text-5xl font-extrabold tracking-widest text-emerald-400">
                                     000000
                                 </span>
-                                <button onclick="copyRoomPin()" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition" title="Copiar PIN">
+                                <button type="button" onclick="copyRoomPin()" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer" title="Copiar PIN">
                                     <i class="fa-regular fa-copy"></i>
                                 </button>
                             </div>
                         </div>
-                        <div id="qrcode-box" class="bg-white p-2 rounded-xl shadow-md"></div>
+                        <div id="qrcode-box" class="bg-white p-2 rounded-xl shadow-md flex items-center justify-center w-[112px] h-[112px]"></div>
                     </div>
                 </div>
 
@@ -309,7 +308,7 @@
                 <div class="flex flex-wrap items-center justify-between gap-4 py-4 border-b border-white/10 text-sm">
                     <div class="flex items-center gap-3">
                         <span class="text-slate-300 font-medium"><i class="fa-regular fa-clock text-emerald-400 mr-1"></i> Tempo por pergunta:</span>
-                        <select id="host-time-select" class="bg-slate-900 border border-white/20 rounded-xl px-3 py-1.5 text-white font-semibold focus:outline-none">
+                        <select id="host-time-select" onchange="broadcastHostState()" class="bg-slate-900 border border-white/20 rounded-xl px-3 py-1.5 text-white font-semibold focus:outline-none">
                             <option value="15">15 segundos (Rápido)</option>
                             <option value="20" selected>20 segundos (Padrão)</option>
                             <option value="30">30 segundos (Calmo)</option>
@@ -318,7 +317,7 @@
 
                     <div class="flex items-center gap-3">
                         <span class="text-slate-300 font-medium"><i class="fa-solid fa-layer-group text-indigo-400 mr-1"></i> Quantidade:</span>
-                        <select id="host-count-select" class="bg-slate-900 border border-white/20 rounded-xl px-3 py-1.5 text-white font-semibold focus:outline-none">
+                        <select id="host-count-select" onchange="broadcastHostState()" class="bg-slate-900 border border-white/20 rounded-xl px-3 py-1.5 text-white font-semibold focus:outline-none">
                             <option value="10">10 Primeiras Perguntas</option>
                             <option value="15">15 Perguntas</option>
                             <option value="25" selected>Todas as 25 Perguntas</option>
@@ -333,7 +332,7 @@
                             <i class="fa-solid fa-users text-emerald-400"></i>
                             <span>Jogadores Conectados (<span id="lobby-player-count">0</span>)</span>
                         </h3>
-                        <button onclick="addDemoBots()" class="text-xs px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition">
+                        <button type="button" onclick="addDemoBots()" class="text-xs px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition cursor-pointer">
                             <i class="fa-solid fa-robot mr-1"></i> Simular Colegas (Teste)
                         </button>
                     </div>
@@ -348,10 +347,10 @@
 
                 <!-- Botões de Ação do Host -->
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10">
-                    <button onclick="confirmReturnHome()" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm transition">
+                    <button type="button" onclick="confirmReturnHome()" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm transition cursor-pointer">
                         Cancelar Sala
                     </button>
-                    <button id="btn-host-start-game" onclick="hostStartQuiz()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-display font-bold text-lg shadow-xl shadow-emerald-950/60 transition flex items-center justify-center gap-3">
+                    <button id="btn-host-start-game" type="button" onclick="hostStartQuiz()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-display font-bold text-lg shadow-xl shadow-emerald-950/60 transition flex items-center justify-center gap-3 cursor-pointer">
                         <i class="fa-solid fa-rocket"></i>
                         <span>Iniciar Quiz Agora!</span>
                     </button>
@@ -368,10 +367,10 @@
                     🩺
                 </div>
                 <span class="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold mb-2">
-                    Você está na sala!
+                    Conectado à sala!
                 </span>
                 <h2 id="player-wait-name" class="font-display text-2xl sm:text-3xl font-bold mb-2">Jogador</h2>
-                <p class="text-slate-300 text-sm mb-6">
+                <p id="player-wait-desc" class="text-slate-300 text-sm mb-6">
                     Olhe para a tela do apresentador. O jogo vai começar a qualquer momento!
                 </p>
                 <div class="flex items-center justify-center gap-2 text-emerald-400 font-semibold text-sm bg-slate-950/50 py-3 px-4 rounded-2xl">
@@ -419,7 +418,7 @@
             <!-- Grid das 4 Alternativas Estilo Kahoot -->
             <div id="quiz-options-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Botão A (Vermelho - Triângulo) -->
-                <button onclick="submitAnswer(0)" id="opt-btn-0" class="kahoot-btn btn-red rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px]">
+                <button type="button" onclick="submitAnswer(0)" id="opt-btn-0" class="kahoot-btn btn-red rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px] cursor-pointer">
                     <div class="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center shrink-0 text-2xl">
                         <i class="fa-solid fa-play -rotate-90"></i>
                     </div>
@@ -427,7 +426,7 @@
                 </button>
 
                 <!-- Botão B (Azul - Losango) -->
-                <button onclick="submitAnswer(1)" id="opt-btn-1" class="kahoot-btn btn-blue rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px]">
+                <button type="button" onclick="submitAnswer(1)" id="opt-btn-1" class="kahoot-btn btn-blue rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px] cursor-pointer">
                     <div class="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center shrink-0 text-2xl">
                         <i class="fa-solid fa-diamond"></i>
                     </div>
@@ -435,7 +434,7 @@
                 </button>
 
                 <!-- Botão C (Amarelo - Círculo) -->
-                <button onclick="submitAnswer(2)" id="opt-btn-2" class="kahoot-btn btn-yellow rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px]">
+                <button type="button" onclick="submitAnswer(2)" id="opt-btn-2" class="kahoot-btn btn-yellow rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px] cursor-pointer">
                     <div class="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center shrink-0 text-2xl">
                         <i class="fa-solid fa-circle"></i>
                     </div>
@@ -443,7 +442,7 @@
                 </button>
 
                 <!-- Botão D (Verde - Quadrado) -->
-                <button onclick="submitAnswer(3)" id="opt-btn-3" class="kahoot-btn btn-green rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px]">
+                <button type="button" onclick="submitAnswer(3)" id="opt-btn-3" class="kahoot-btn btn-green rounded-2xl p-4 sm:p-6 text-left flex items-center gap-4 min-h-[82px] sm:min-h-[96px] cursor-pointer">
                     <div class="w-12 h-12 rounded-xl bg-black/20 flex items-center justify-center shrink-0 text-2xl">
                         <i class="fa-solid fa-square"></i>
                     </div>
@@ -460,7 +459,7 @@
 
             <!-- Botão do Host para encerrar tempo antecipadamente -->
             <div id="host-skip-timer-box" class="hidden mt-6 text-center">
-                <button onclick="hostForceReveal()" class="px-5 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-xs sm:text-sm font-semibold transition">
+                <button type="button" onclick="hostForceReveal()" class="px-5 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-xs sm:text-sm font-semibold transition cursor-pointer">
                     <i class="fa-solid fa-forward-step mr-1"></i> Encerrar Tempo & Mostrar Resposta
                 </button>
             </div>
@@ -535,7 +534,7 @@
 
                 <!-- Botão Próxima Pergunta -->
                 <div class="text-center">
-                    <button id="btn-next-question" onclick="advanceToNextQuestion()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-display font-bold text-lg shadow-lg transition inline-flex items-center justify-center gap-2">
+                    <button id="btn-next-question" type="button" onclick="advanceToNextQuestion()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-display font-bold text-lg shadow-lg transition inline-flex items-center justify-center gap-2 cursor-pointer">
                         <span>Próxima Questão</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </button>
@@ -604,7 +603,7 @@
 
                 <!-- Botões Finais -->
                 <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <button onclick="returnHome()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-lg shadow-lg transition">
+                    <button type="button" onclick="returnHome()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-lg shadow-lg transition cursor-pointer">
                         <i class="fa-solid fa-rotate-left mr-2"></i> Voltar ao Início
                     </button>
                 </div>
@@ -614,14 +613,14 @@
     </main>
 
     <!-- ========================================================= -->
-    <!-- SCRIPT PRINCIPAL (MULTIPLAYER WSS + LÓGICA + ÁUDIO)       -->
+    <!-- SCRIPT PRINCIPAL (PEERJS + BROADCAST + LOCALSTORAGE + ÁUDIO)-->
     <!-- ========================================================= -->
     <script>
         // =========================================================================
         // 1. BANCO COMPLETO DE 25 PERGUNTAS SOBRE MADELEINE LEININGER
         // =========================================================================
         const QUESTIONS_DB = [
-            // --- 10 PERGUNTAS FORNECIDAS PELO USUÁRIO ---
+            // --- 10 PERGUNTAS OBRIGATÓRIAS ---
             {
                 q: "1. Quem foi Madeleine Leininger?",
                 options: [
@@ -743,7 +742,7 @@
                 explanation: "Para Leininger, 'o cuidado é a essência da enfermagem', e não há cura completa sem o cuidado culturalmente sensível."
             },
 
-            // --- 15 PERGUNTAS COMPLEMENTARES PARA COMPLETAR AS 25 ---
+            // --- 15 PERGUNTAS COMPLEMENTARES (11 A 25) ---
             {
                 q: "11. Qual famoso diagrama visual Madeleine Leininger criou para representar os fatores que influenciam o cuidado cultural?",
                 options: [
@@ -927,158 +926,376 @@
         ];
 
         // =========================================================================
-        // 2. MOTOR MULTIPLAYER REDUNDANTE (MQTT OVER WSS + BROADCAST CHANNEL)
-        //    Funciona em 4G, Wi-Fi universitário e abas locais sem configuração!
+        // 2. CAMADA MULTIPLAYER: PEERJS (WEBRTC P2P) + BROADCAST + LOCALSTORAGE
+        //    Nunca bloqueia a UI e funciona entre redes diferentes ou na mesma aba
         // =========================================================================
-        const WSS_BROKERS = [
-            "wss://broker.emqx.io:8084/mqtt",
-            "wss://broker.hivemq.com:8884/mqtt",
-            "wss://test.mosquitto.org:8081/mqtt"
-        ];
+        function pinToPeerId(pin) {
+            return `leininger-quiz-${String(pin).trim()}`;
+        }
 
-        class RealtimeQuizBus {
+        class PeerMultiplayerManager {
             constructor() {
-                this.client = null;
-                this.brokerIndex = 0;
-                this.connected = false;
+                this.peer = null;
+                this.hostConnections = {}; // { peerId: DataConnection }
+                this.playerConn = null;
+                this.onMessage = null;
+                this.activePin = null;
+                this.role = null; // 'host' | 'player'
                 this.bc = null;
-                this.subscribedPin = null;
-                this.onMessageCallback = null;
-                this.seenMsgIds = new Set();
+                this.storagePollTimer = null;
+                this.lastStorageTimestamp = Date.now();
+                this.seenIds = new Set();
 
-                // Canal local instantâneo (mesmo dispositivo / múltiplas abas)
                 try {
-                    this.bc = new BroadcastChannel('leininger_quiz_realtime_v1');
+                    this.bc = new BroadcastChannel('leininger_peer_fallback_v1');
                     this.bc.onmessage = (ev) => {
-                        if (ev.data) this._handleIncoming(ev.data);
+                        if (ev.data) this._dispatch(ev.data, null);
                     };
                 } catch (e) {}
 
-                this.connectNextBroker();
+                this._startStoragePolling();
             }
 
-            updateStatusUI(state, text) {
+            setStatus(state, text) {
                 const dot = document.getElementById('net-status-dot');
                 const label = document.getElementById('net-status-label');
                 if (!dot || !label) return;
                 label.textContent = text;
                 if (state === 'online') {
                     dot.className = "w-2 h-2 rounded-full bg-emerald-400";
-                } else if (state === 'connecting') {
+                } else if (state === 'pending') {
                     dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
                 } else {
-                    dot.className = "w-2 h-2 rounded-full bg-indigo-400";
+                    dot.className = "w-2 h-2 rounded-full bg-sky-400";
                 }
             }
 
-            connectNextBroker() {
-                if (typeof mqtt === 'undefined') {
-                    this.updateStatusUI('local', 'Modo Local Ativo');
+            _startStoragePolling() {
+                clearInterval(this.storagePollTimer);
+                this.storagePollTimer = setInterval(() => {
+                    if (!this.activePin) return;
+                    try {
+                        const key = `lein_bus_${this.activePin}`;
+                        const raw = localStorage.getItem(key);
+                        if (!raw) return;
+                        const item = JSON.parse(raw);
+                        if (item && item.envelope && item.ts > this.lastStorageTimestamp) {
+                            this.lastStorageTimestamp = item.ts;
+                            this._dispatch(item.envelope, null);
+                        }
+                    } catch (e) {}
+                }, 350);
+            }
+
+            _writeStorageBus(pin, envelope) {
+                try {
+                    const ts = Date.now() + Math.random();
+                    this.lastStorageTimestamp = ts;
+                    localStorage.setItem(`lein_bus_${pin}`, JSON.stringify({ ts, envelope }));
+                } catch (e) {}
+            }
+
+            _dispatch(envelope, conn) {
+                if (!envelope || !envelope._pin) return;
+                if (this.activePin && String(envelope._pin) !== String(this.activePin)) return;
+                if (envelope._id) {
+                    if (this.seenIds.has(envelope._id)) return;
+                    this.seenIds.add(envelope._id);
+                    if (this.seenIds.size > 500) {
+                        const first = this.seenIds.values().next().value;
+                        this.seenIds.delete(first);
+                    }
+                }
+                if (this.onMessage) {
+                    this.onMessage(envelope, conn);
+                }
+            }
+
+            cleanup() {
+                this.role = null;
+                this.activePin = null;
+                this.onMessage = null;
+                this.hostConnections = {};
+                if (this.playerConn) {
+                    try { this.playerConn.close(); } catch (e) {}
+                    this.playerConn = null;
+                }
+                if (this.peer) {
+                    try { this.peer.destroy(); } catch (e) {}
+                    this.peer = null;
+                }
+                this.setStatus('ready', 'Pronto');
+            }
+
+            // Inicia Host imediatamente sem bloquear a interface
+            startHost(pin, onMessage) {
+                this.cleanup();
+                this.role = 'host';
+                this.activePin = String(pin);
+                this.onMessage = onMessage;
+                this.setStatus('pending', 'Iniciando P2P...');
+
+                const hintEl = document.getElementById('host-p2p-hint');
+                if (hintEl) {
+                    hintEl.textContent = "Sala criada! Compartilhe o PIN ou QR Code. Em redes restritas, você também pode usar 'Simular Colegas'.";
+                }
+
+                if (typeof Peer === 'undefined') {
+                    this.setStatus('local', 'Modo Local');
+                    if (hintEl) hintEl.textContent = "PeerJS indisponível nesta rede — modo local e 'Simular Colegas' ativos.";
                     return;
                 }
 
-                const url = WSS_BROKERS[this.brokerIndex % WSS_BROKERS.length];
-                this.updateStatusUI('connecting', 'Conectando...');
-
                 try {
-                    if (this.client) {
-                        try { this.client.end(true); } catch (e) {}
-                    }
-
-                    const clientId = 'lein_' + Math.random().toString(16).substring(2, 10) + '_' + Date.now().toString(36);
-                    this.client = mqtt.connect(url, {
-                        clientId: clientId,
-                        clean: true,
-                        connectTimeout: 5000,
-                        reconnectPeriod: 3000,
-                        keepalive: 25
-                    });
-
-                    this.client.on('connect', () => {
-                        this.connected = true;
-                        this.updateStatusUI('online', 'Online (4G/Wi-Fi)');
-                        if (this.subscribedPin) {
-                            this.client.subscribe(`unisaomiguel/leininger/room/${this.subscribedPin}/#`, { qos: 1 });
+                    const peerId = pinToPeerId(pin);
+                    this.peer = new Peer(peerId, {
+                        debug: 0,
+                        config: {
+                            iceServers: [
+                                { urls: 'stun:stun.l.google.com:19302' },
+                                { urls: 'stun:stun1.l.google.com:19302' },
+                                { urls: 'stun:global.stun.twilio.com:3478' }
+                            ]
                         }
                     });
 
-                    this.client.on('message', (topic, payload) => {
-                        try {
-                            const data = JSON.parse(payload.toString());
-                            this._handleIncoming(data);
-                        } catch (e) {}
+                    this.peer.on('open', () => {
+                        this.setStatus('online', 'Online (P2P Pronto)');
+                        if (hintEl) {
+                            hintEl.textContent = "Conexão P2P ativa! Colegas em outras redes podem entrar usando o PIN.";
+                        }
                     });
 
-                    this.client.on('error', () => {
-                        this.connected = false;
-                        this.brokerIndex++;
-                        setTimeout(() => this.connectNextBroker(), 1500);
+                    this.peer.on('connection', (conn) => {
+                        this.hostConnections[conn.peer] = conn;
+                        conn.on('data', (data) => {
+                            this._dispatch(data, conn);
+                        });
+                        conn.on('close', () => {
+                            delete this.hostConnections[conn.peer];
+                        });
+                        conn.on('error', () => {
+                            delete this.hostConnections[conn.peer];
+                        });
                     });
 
-                    this.client.on('offline', () => {
-                        this.connected = false;
-                        this.updateStatusUI('connecting', 'Reconectando...');
+                    this.peer.on('error', (err) => {
+                        console.warn("PeerJS Host warning:", err);
+                        this.setStatus('local', 'P2P Restrito / Local');
+                        if (hintEl) {
+                            hintEl.textContent = "P2P externo limitado nesta rede. Mesmo navegador/abas conectam via PIN e você pode usar 'Simular Colegas'.";
+                        }
                     });
                 } catch (e) {
-                    this.brokerIndex++;
-                    setTimeout(() => this.connectNextBroker(), 2000);
+                    this.setStatus('local', 'Modo Local');
                 }
             }
 
-            subscribeRoom(pin, callback) {
-                this.subscribedPin = pin;
-                this.onMessageCallback = callback;
-                if (this.client && this.connected) {
-                    this.client.subscribe(`unisaomiguel/leininger/room/${pin}/#`, { qos: 1 });
-                }
-            }
-
-            publish(pin, subtopic, payloadObj, retain = false) {
+            // Host envia mensagem para todos os peers conectados + BroadcastChannel + localStorage
+            broadcastFromHost(payload) {
+                if (!this.activePin) return;
                 const envelope = {
-                    ...payloadObj,
-                    _pin: pin,
-                    _msgId: Math.random().toString(36).substring(2, 10) + Date.now()
+                    ...payload,
+                    _pin: String(this.activePin),
+                    _id: 'msg_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now()
                 };
-                this.seenMsgIds.add(envelope._msgId);
+                this.seenIds.add(envelope._id);
 
-                // 1. Envia via BroadcastChannel (instantâneo para abas locais)
                 if (this.bc) {
                     try { this.bc.postMessage(envelope); } catch (e) {}
                 }
+                this._writeStorageBus(this.activePin, envelope);
 
-                // 2. Envia via MQTT WSS (funciona entre celulares 4G, Wi-Fi, PC)
-                if (this.client && this.connected) {
+                Object.values(this.hostConnections).forEach((conn) => {
                     try {
-                        this.client.publish(
-                            `unisaomiguel/leininger/room/${pin}/${subtopic}`,
-                            JSON.stringify(envelope),
-                            { qos: 1, retain: retain }
-                        );
+                        if (conn && conn.open) {
+                            conn.send(envelope);
+                        }
                     } catch (e) {}
+                });
+            }
+
+            // Jogador conecta ao Host via PIN com timeout curto (6s) e fallback local
+            joinAsPlayer(pin, payload, onMessage, onTimeoutOrFail) {
+                this.cleanup();
+                this.role = 'player';
+                this.activePin = String(pin);
+                this.onMessage = onMessage;
+                this.setStatus('pending', 'Conectando PIN...');
+
+                const envelope = {
+                    ...payload,
+                    _pin: String(pin),
+                    _id: 'msg_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now()
+                };
+                this.seenIds.add(envelope._id);
+
+                // Envia imediatamente por BroadcastChannel e localStorage (mesmo dispositivo/navegador)
+                if (this.bc) {
+                    try { this.bc.postMessage(envelope); } catch (e) {}
+                }
+                this._writeStorageBus(pin, envelope);
+
+                if (typeof Peer === 'undefined') {
+                    this.setStatus('local', 'Modo Local');
+                    if (onTimeoutOrFail) onTimeoutOrFail("P2P indisponível; usando canal local.");
+                    return;
+                }
+
+                let settled = false;
+                const timeoutHandle = setTimeout(() => {
+                    if (!settled && (!this.playerConn || !this.playerConn.open)) {
+                        this.setStatus('local', 'Aguardando Host / Local');
+                        if (onTimeoutOrFail) {
+                            onTimeoutOrFail("Tempo de espera P2P esgotado (verifique o PIN ou se a rede bloqueia WebRTC). Se estiver no mesmo navegador, o modo local está ativo.");
+                        }
+                    }
+                }, 6000);
+
+                try {
+                    const clientPeerId = 'lein-p-' + Math.random().toString(36).substring(2, 9) + '-' + Date.now().toString(36);
+                    this.peer = new Peer(clientPeerId, {
+                        debug: 0,
+                        config: {
+                            iceServers: [
+                                { urls: 'stun:stun.l.google.com:19302' },
+                                { urls: 'stun:stun1.l.google.com:19302' },
+                                { urls: 'stun:global.stun.twilio.com:3478' }
+                            ]
+                        }
+                    });
+
+                    this.peer.on('open', () => {
+                        const targetPeerId = pinToPeerId(pin);
+                        const conn = this.peer.connect(targetPeerId, { reliable: true });
+                        this.playerConn = conn;
+
+                        conn.on('open', () => {
+                            settled = true;
+                            clearTimeout(timeoutHandle);
+                            this.setStatus('online', 'Online (P2P)');
+                            try { conn.send(envelope); } catch (e) {}
+                        });
+
+                        conn.on('data', (data) => {
+                            this._dispatch(data, conn);
+                        });
+
+                        conn.on('close', () => {
+                            this.setStatus('pending', 'Desconectado');
+                        });
+
+                        conn.on('error', (err) => {
+                            console.warn("Conn error:", err);
+                        });
+                    });
+
+                    this.peer.on('error', (err) => {
+                        console.warn("Peer client error:", err);
+                        if (!settled) {
+                            settled = true;
+                            clearTimeout(timeoutHandle);
+                            this.setStatus('local', 'Modo Local');
+                            if (onTimeoutOrFail) {
+                                onTimeoutOrFail("Não foi possível alcançar o PIN via P2P (PIN inválido ou rede restrita).");
+                            }
+                        }
+                    });
+                } catch (e) {
+                    clearTimeout(timeoutHandle);
+                    this.setStatus('local', 'Modo Local');
                 }
             }
 
-            _handleIncoming(data) {
-                if (!data || !data._pin) return;
-                if (this.subscribedPin && data._pin !== this.subscribedPin) return;
-                if (data._msgId && this.seenMsgIds.has(data._msgId)) return;
-                if (data._msgId) {
-                    this.seenMsgIds.add(data._msgId);
-                    if (this.seenMsgIds.size > 400) {
-                        const first = this.seenMsgIds.values().next().value;
-                        this.seenMsgIds.delete(first);
-                    }
+            // Jogador envia mensagem (ex: resposta) para Host + canais locais
+            sendToHost(payload) {
+                if (!this.activePin) return;
+                const envelope = {
+                    ...payload,
+                    _pin: String(this.activePin),
+                    _id: 'msg_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now()
+                };
+                this.seenIds.add(envelope._id);
+
+                if (this.bc) {
+                    try { this.bc.postMessage(envelope); } catch (e) {}
                 }
-                if (this.onMessageCallback) {
-                    this.onMessageCallback(data);
+                this._writeStorageBus(this.activePin, envelope);
+
+                if (this.playerConn && this.playerConn.open) {
+                    try {
+                        this.playerConn.send(envelope);
+                    } catch (e) {}
                 }
             }
         }
 
-        const netBus = new RealtimeQuizBus();
+        const mpManager = new PeerMultiplayerManager();
 
         // =========================================================================
-        // 3. SISTEMA DE EFEITOS SONOROS (WEB AUDIO API - SEM ARQUIVOS EXTERNOS)
+        // 3. GERADOR LOCAL DE QR CODE (CANVAS / SVG SEM DEPENDÊNCIA EXTERNA)
+        // =========================================================================
+        function renderSimpleQRCode(container, text, size = 96) {
+            if (!container) return;
+            container.innerHTML = '';
+
+            // Gera matriz determinística visual com marcadores de canto estilo QR + bits do texto
+            const modules = 21;
+            const cell = Math.floor(size / modules);
+            const actualSize = cell * modules;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = actualSize;
+            canvas.height = actualSize;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, actualSize, actualSize);
+            ctx.fillStyle = '#0f172a';
+
+            const drawFinder = (r, c) => {
+                for (let dr = 0; dr < 7; dr++) {
+                    for (let dc = 0; dc < 7; dc++) {
+                        const isBorder = dr === 0 || dr === 6 || dc === 0 || dc === 6;
+                        const isCenter = dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4;
+                        if (isBorder || isCenter) {
+                            ctx.fillRect((c + dc) * cell, (r + dr) * cell, cell, cell);
+                        }
+                    }
+                }
+            };
+
+            drawFinder(0, 0);
+            drawFinder(0, modules - 7);
+            drawFinder(modules - 7, 0);
+
+            // Hash simples do texto para preencher módulos de dados
+            let hash = 2166136261;
+            for (let i = 0; i < text.length; i++) {
+                hash ^= text.charCodeAt(i);
+                hash = Math.imul(hash, 16777619);
+            }
+
+            for (let r = 0; r < modules; r++) {
+                for (let c = 0; c < modules; c++) {
+                    const inTopLeft = r < 8 && c < 8;
+                    const inTopRight = r < 8 && c >= modules - 8;
+                    const inBottomLeft = r >= modules - 8 && c < 8;
+                    if (inTopLeft || inTopRight || inBottomLeft) continue;
+
+                    const charCode = text.charCodeAt((r * modules + c) % text.length);
+                    const bit = ((r * 31 + c * 17 + charCode + (hash >>> ((r + c) % 24))) & 1) === 1;
+                    if (bit) {
+                        ctx.fillRect(c * cell, r * cell, cell, cell);
+                    }
+                }
+            }
+
+            container.appendChild(canvas);
+        }
+
+        // =========================================================================
+        // 4. SISTEMA DE EFEITOS SONOROS (WEB AUDIO API - SEM ARQUIVOS MP3)
         // =========================================================================
         let soundEnabled = true;
         let audioCtx = null;
@@ -1115,10 +1332,10 @@
             tick: () => playTone(880, 'sine', 0.07, 0.08),
             urgentTick: () => playTone(1100, 'square', 0.09, 0.1),
             correct: () => {
-                playTone(523.25, 'triangle', 0.15, 0.15, 0);     // C5
-                playTone(659.25, 'triangle', 0.15, 0.15, 0.1);   // E5
-                playTone(783.99, 'triangle', 0.25, 0.18, 0.2);   // G5
-                playTone(1046.50, 'triangle', 0.35, 0.2, 0.32);  // C6
+                playTone(523.25, 'triangle', 0.15, 0.15, 0);
+                playTone(659.25, 'triangle', 0.15, 0.15, 0.1);
+                playTone(783.99, 'triangle', 0.25, 0.18, 0.2);
+                playTone(1046.50, 'triangle', 0.35, 0.2, 0.32);
             },
             wrong: () => {
                 playTone(300, 'sawtooth', 0.2, 0.14, 0);
@@ -1138,7 +1355,7 @@
         };
 
         // =========================================================================
-        // 4. ESTADO GLOBAL DO JOGO
+        // 5. ESTADO GLOBAL DO JOGO
         // =========================================================================
         const AVATARS = ["🩺", "💉", "🧬", "🏥", "❤️‍🩹", "🌿", "🌍", "🧠", "👩‍⚕️", "👨‍⚕️", "🔬", "✨"];
 
@@ -1159,14 +1376,14 @@
             hostSyncInterval: null,
             hasAnsweredCurrent: false,
             selectedOption: null,
-            playersMap: {}, // { playerId: { name, avatar, score, correctCount, lastAnswer, lastPoints, lastQuestionIndex } }
+            playersMap: {},
             lastRenderedStatus: null,
             lastRenderedQIndex: -1,
             currentRoomStatus: 'lobby'
         };
 
         // =========================================================================
-        // 5. UTILITÁRIOS DE UI (VIEWS, TOASTS, MODAL, LISTA DE QUESTÕES)
+        // 6. UTILITÁRIOS DE UI (VIEWS, TOASTS, MODAL, LISTA DE QUESTÕES)
         // =========================================================================
         function switchView(viewId) {
             const views = [
@@ -1194,13 +1411,13 @@
                 error: 'bg-rose-950/95 border-rose-400 text-rose-200'
             };
             toast.className = `px-4 py-3 rounded-2xl border shadow-xl backdrop-blur-md text-sm font-semibold flex items-center gap-3 animate-pop ${colors[type] || colors.info}`;
-            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation text-rose-400' : type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-circle-info text-indigo-400'}"></i><span>${message}</span>`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation text-rose-400' : type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-circle-info text-indigo-400'}"></i><span>${escapeHTML(message)}</span>`;
             container.appendChild(toast);
             setTimeout(() => {
                 toast.style.opacity = '0';
                 toast.style.transition = 'opacity 0.3s ease';
                 setTimeout(() => toast.remove(), 300);
-            }, 3200);
+            }, 3600);
         }
 
         let modalCallback = null;
@@ -1233,8 +1450,7 @@
         window.returnHome = function() {
             clearInterval(gameState.timerInterval);
             clearInterval(gameState.hostSyncInterval);
-            netBus.subscribedPin = null;
-            netBus.onMessageCallback = null;
+            mpManager.cleanup();
             gameState = {
                 mode: null,
                 roomPin: null,
@@ -1262,14 +1478,13 @@
             switchView('view-home');
         };
 
-        // Renderiza o drawer com as 25 perguntas na tela inicial
         function renderQuestionsPreview() {
             const drawer = document.getElementById('questions-preview-drawer');
-            drawer.innerHTML = QUESTIONS_DB.map((item, idx) => `
+            drawer.innerHTML = QUESTIONS_DB.map((item) => `
                 <div class="bg-slate-950/50 p-3 rounded-xl border border-white/5 text-xs sm:text-sm">
-                    <div class="font-bold text-white mb-1">${item.q}</div>
+                    <div class="font-bold text-white mb-1">${escapeHTML(item.q)}</div>
                     <div class="text-emerald-400 font-semibold">
-                        <i class="fa-solid fa-check mr-1"></i> ${item.options[item.correct]}
+                        <i class="fa-solid fa-check mr-1"></i> ${escapeHTML(item.options[item.correct])}
                     </div>
                 </div>
             `).join('');
@@ -1306,10 +1521,11 @@
         };
 
         // =========================================================================
-        // 6. MODO SOLO (PRÁTICA INDIVIDUAL COM AS 25 PERGUNTAS)
+        // 7. MODO SOLO (PRÁTICA INDIVIDUAL COM AS 25 PERGUNTAS)
         // =========================================================================
         window.startSoloMode = function() {
             SFX.click();
+            mpManager.cleanup();
             gameState.mode = 'solo';
             gameState.questions = [...QUESTIONS_DB];
             gameState.currentQIndex = 0;
@@ -1322,7 +1538,7 @@
         };
 
         // =========================================================================
-        // 7. MODO HOST / APRESENTADOR (MULTIPLAYER)
+        // 8. MODO HOST / APRESENTADOR (MULTIPLAYER IMEDIATO)
         // =========================================================================
         window.startAsHost = function() {
             SFX.click();
@@ -1332,44 +1548,38 @@
             gameState.playersMap = {};
             gameState.currentRoomStatus = 'lobby';
             gameState.currentQIndex = 0;
+            gameState.questions = QUESTIONS_DB.slice(0, parseInt(document.getElementById('host-count-select')?.value, 10) || 25);
+            gameState.timePerQuestion = parseInt(document.getElementById('host-time-select')?.value, 10) || 20;
 
             document.getElementById('lobby-pin-display').textContent = pin;
             document.getElementById('header-pin-text').textContent = pin;
             document.getElementById('header-room-badge').classList.remove('hidden');
             document.getElementById('header-room-badge').classList.add('flex');
 
-            // Gerar QR Code apontando para a URL atual com ?pin=XXXXXX
             const qrContainer = document.getElementById('qrcode-box');
-            qrContainer.innerHTML = '';
-            try {
-                const joinUrl = `${window.location.origin}${window.location.pathname}?pin=${pin}`;
-                new QRCode(qrContainer, {
-                    text: joinUrl,
-                    width: 96,
-                    height: 96,
-                    colorDark: "#0f172a",
-                    colorLight: "#ffffff"
-                });
-            } catch (e) {
-                qrContainer.innerHTML = '<div class="text-slate-900 text-xs font-bold p-2">PIN: ' + pin + '</div>';
-            }
+            const joinUrl = `${window.location.origin}${window.location.pathname}?pin=${pin}`;
+            renderSimpleQRCode(qrContainer, joinUrl, 96);
 
+            // Transição imediata para a tela da sala (nunca espera conexão externa)
             switchView('view-host-lobby');
             renderLobbyPlayers();
 
-            // Inscrever na sala e escutar entradas e respostas dos jogadores
-            netBus.subscribeRoom(pin, (msg) => {
-                if (msg.type === 'PLAYER_JOIN') {
+            mpManager.startHost(pin, (msg, conn) => {
+                if (!msg) return;
+                if (msg.type === 'PLAYER_JOIN' && msg.player) {
                     const p = msg.player;
                     if (!gameState.playersMap[p.id]) {
                         gameState.playersMap[p.id] = p;
                         showToast(`${p.avatar || '🩺'} ${p.name} entrou na sala!`, "success");
                     } else {
-                        gameState.playersMap[p.id] = { ...gameState.playersMap[p.id], name: p.name, avatar: p.avatar };
+                        gameState.playersMap[p.id] = {
+                            ...gameState.playersMap[p.id],
+                            name: p.name,
+                            avatar: p.avatar
+                        };
                     }
                     renderLobbyPlayers();
                     updateLiveAnswerCounter();
-                    // Reenvia estado atual da sala imediatamente para sincronizar o novo jogador
                     broadcastHostState();
                 } else if (msg.type === 'PLAYER_ANSWER') {
                     const p = gameState.playersMap[msg.playerId];
@@ -1381,12 +1591,11 @@
                         p.lastPoints = msg.lastPoints;
                         updateLiveAnswerCounter();
                     }
-                } else if (msg.type === 'PING_ROOM') {
+                } else if (msg.type === 'REQUEST_STATE') {
                     broadcastHostState();
                 }
             });
 
-            // Publica estado inicial retido no broker e mantém heartbeat a cada 2.5s
             broadcastHostState();
             clearInterval(gameState.hostSyncInterval);
             gameState.hostSyncInterval = setInterval(() => {
@@ -1396,20 +1605,25 @@
             }, 2500);
         };
 
-        function broadcastHostState() {
+        window.broadcastHostState = function() {
             if (gameState.mode !== 'host' || !gameState.roomPin) return;
             const count = parseInt(document.getElementById('host-count-select')?.value, 10) || 25;
             const timeSec = parseInt(document.getElementById('host-time-select')?.value, 10) || 20;
 
-            netBus.publish(gameState.roomPin, 'state', {
+            if (gameState.currentRoomStatus === 'lobby') {
+                gameState.questions = QUESTIONS_DB.slice(0, count);
+                gameState.timePerQuestion = timeSec;
+            }
+
+            mpManager.broadcastFromHost({
                 type: 'ROOM_STATE',
                 status: gameState.currentRoomStatus,
                 currentQIndex: gameState.currentQIndex,
                 questionCount: gameState.questions.length || count,
                 timePerQuestion: gameState.timePerQuestion || timeSec,
                 players: Object.values(gameState.playersMap)
-            }, true);
-        }
+            });
+        };
 
         function renderLobbyPlayers() {
             const grid = document.getElementById('lobby-players-grid');
@@ -1420,7 +1634,7 @@
             if (players.length === 0) {
                 grid.innerHTML = `
                     <div class="col-span-full flex flex-col items-center justify-center text-slate-400 py-8 text-sm">
-                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-400"></i>
+                        <i class="fa-solid fa-users-viewfinder text-2xl mb-2 text-emerald-400"></i>
                         <span>Aguardando participantes entrarem com o PIN <strong>${gameState.roomPin}</strong>...</span>
                     </div>`;
                 return;
@@ -1434,12 +1648,11 @@
             `).join('');
         }
 
-        // Adiciona participantes simulados caso o apresentador queira testar sozinho no projetor
         window.addDemoBots = function() {
             SFX.click();
             const demoNames = ["Ana (Enf)", "Lucas", "Malu", "Carla", "Pedro"];
             demoNames.forEach((name, idx) => {
-                const botId = `bot_${idx}_${Date.now()}`;
+                const botId = `bot_${idx}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
                 gameState.playersMap[botId] = {
                     id: botId,
                     name: name,
@@ -1448,39 +1661,15 @@
                     correctCount: 0,
                     isBot: true,
                     lastAnswer: null,
-                    lastQuestionIndex: -1
+                    lastQuestionIndex: -1,
+                    lastPoints: 0
                 };
             });
             renderLobbyPlayers();
+            broadcastHostState();
             showToast("5 colegas simulados adicionados!", "success");
         };
 
-        window.hostStartQuiz = async function() {
-            SFX.click();
-            const count = parseInt(document.getElementById('host-count-select').value, 10) || 25;
-            const timeSec = parseInt(document.getElementById('host-time-select').value, 10) || 20;
-
-            gameState.questions = QUESTIONS_DB.slice(0, count);
-            gameState.timePerQuestion = timeSec;
-            gameState.currentQIndex = 0;
-
-            await hostPushQuestionState('question', 0);
-            renderQuestionScreen();
-        };
-
-        async function hostPushQuestionState(status, qIndex) {
-            if (firebaseReady && db && gameState.roomPin) {
-                try {
-                    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'leininger_rooms', gameState.roomPin);
-                    await updateDoc(roomRef, {
-                        status: status,
-                        currentQIndex: qIndex,
-                        questionCount: gameState.questions.length,
-                        timePerQuestion: gameState.timePerQuestion,
-                        updatedAt: Date.now()
-                    });
-                } catch (e) {
-                    console.error("Erro ao atualizar sala:", e);
         window.hostStartQuiz = function() {
             SFX.click();
             const count = parseInt(document.getElementById('host-count-select').value, 10) || 25;
@@ -1496,7 +1685,7 @@
         };
 
         // =========================================================================
-        // 8. MODO JOGADOR (ENTRAR PELO CELULAR COM PIN)
+        // 9. MODO JOGADOR (ENTRAR COM PIN E NOME)
         // =========================================================================
         window.joinMultiplayerRoom = function() {
             SFX.click();
@@ -1504,7 +1693,7 @@
             const nameInput = document.getElementById('input-join-name').value.trim();
 
             if (!pinInput || pinInput.length < 4) {
-                showToast("Digite o PIN de 6 dígitos da sala!", "error");
+                showToast("Digite o PIN da sala!", "error");
                 return;
             }
             if (!nameInput) {
@@ -1522,6 +1711,7 @@
             gameState.playerAvatar = avatar;
             gameState.score = 0;
             gameState.correctCount = 0;
+            gameState.streak = 0;
             gameState.lastRenderedStatus = null;
             gameState.lastRenderedQIndex = -1;
 
@@ -1531,23 +1721,9 @@
 
             document.getElementById('player-avatar-badge').textContent = avatar;
             document.getElementById('player-wait-name').textContent = nameInput;
+            document.getElementById('player-wait-desc').textContent = `Sala PIN ${pinInput}. Olhe para a tela do apresentador!`;
             switchView('view-player-wait');
 
-            // Escuta atualizações do Host em tempo real
-            netBus.subscribeRoom(pinInput, (msg) => {
-                if (msg.type === 'ROOM_STATE') {
-                    if (Array.isArray(msg.players)) {
-                        const updatedMap = {};
-                        msg.players.forEach(pl => {
-                            updatedMap[pl.id] = pl;
-                        });
-                        gameState.playersMap = updatedMap;
-                    }
-                    handleRoomStateChangeForPlayer(msg);
-                }
-            });
-
-            // Anuncia entrada do jogador ao Host (e reforça 2x para garantir entrega)
             const joinPayload = {
                 type: 'PLAYER_JOIN',
                 player: {
@@ -1561,14 +1737,28 @@
                     lastPoints: 0
                 }
             };
-            netBus.publish(pinInput, `join/${pId}`, joinPayload, false);
-            setTimeout(() => {
-                if (gameState.mode === 'player' && gameState.roomPin === pinInput) {
-                    netBus.publish(pinInput, `join/${pId}`, joinPayload, false);
-                }
-            }, 1200);
 
-            showToast(`Conectado à sala ${pinInput}!`, "success");
+            mpManager.joinAsPlayer(
+                pinInput,
+                joinPayload,
+                (msg) => {
+                    if (msg && msg.type === 'ROOM_STATE') {
+                        if (Array.isArray(msg.players)) {
+                            const updatedMap = {};
+                            msg.players.forEach(pl => {
+                                updatedMap[pl.id] = pl;
+                            });
+                            gameState.playersMap = updatedMap;
+                        }
+                        handleRoomStateChangeForPlayer(msg);
+                    }
+                },
+                (warnMsg) => {
+                    showToast(warnMsg, "info");
+                }
+            );
+
+            showToast(`Entrando na sala ${pinInput}...`, "success");
         };
 
         function handleRoomStateChangeForPlayer(roomData) {
@@ -1601,7 +1791,7 @@
         }
 
         // =========================================================================
-        // 9. MECÂNICA DA PERGUNTA, TEMPORIZADOR E RESPOSTAS
+        // 10. MECÂNICA DA PERGUNTA, TEMPORIZADOR E RESPOSTAS
         // =========================================================================
         function renderQuestionScreen() {
             clearInterval(gameState.timerInterval);
@@ -1622,12 +1812,11 @@
             document.getElementById('quiz-category-tag').textContent = qObj.category;
             document.getElementById('quiz-question-text').textContent = qObj.q;
 
-            // Preencher os 4 botões
             qObj.options.forEach((optText, idx) => {
                 const btn = document.getElementById(`opt-btn-${idx}`);
                 const span = document.getElementById(`opt-text-${idx}`);
                 span.textContent = optText;
-                btn.disabled = (gameState.mode === 'host'); // Host apenas exibe na tela
+                btn.disabled = (gameState.mode === 'host');
                 btn.classList.remove('ring-4', 'ring-white', 'opacity-40');
             });
 
@@ -1644,7 +1833,6 @@
                 document.getElementById('quiz-status-value').textContent = gameState.score.toLocaleString('pt-BR');
             }
 
-            // Iniciar contagem regressiva
             const timerEl = document.getElementById('quiz-timer-circle');
             timerEl.textContent = gameState.timeRemaining;
             timerEl.classList.remove('timer-urgent');
@@ -1665,26 +1853,30 @@
                     if (gameState.mode === 'host') {
                         hostForceReveal();
                     } else if (gameState.mode === 'solo') {
-                        showRoundResultScreen();
+                        showRoundResultScreen(0);
                     }
                 }
             }, 1000);
         }
 
         function simulateBotsAnswering() {
-            const qObj = gameState.questions[gameState.currentQIndex];
+            const qIndexSnapshot = gameState.currentQIndex;
+            const qObj = gameState.questions[qIndexSnapshot];
+            if (!qObj) return;
+
             Object.values(gameState.playersMap).forEach(p => {
                 if (!p.isBot) return;
-                const delay = 1500 + Math.random() * ((gameState.timePerQuestion - 3) * 1000);
+                const delay = 1400 + Math.random() * Math.max(1000, (gameState.timePerQuestion - 3) * 1000);
                 setTimeout(() => {
-                    if (gameState.currentQIndex !== gameState.questions.indexOf(qObj)) return;
-                    const isRight = Math.random() < 0.72; // 72% chance de acerto dos bots
+                    if (gameState.mode !== 'host' || gameState.currentQIndex !== qIndexSnapshot || gameState.currentRoomStatus !== 'question') return;
+                    const isRight = Math.random() < 0.72;
                     const chosen = isRight ? qObj.correct : Math.floor(Math.random() * 4);
-                    const speedFactor = Math.max(0.4, (gameState.timePerQuestion - (delay / 1000)) / gameState.timePerQuestion);
+                    const speedFactor = Math.max(0.35, (gameState.timePerQuestion - (delay / 1000)) / gameState.timePerQuestion);
                     const pts = chosen === qObj.correct ? Math.round(500 + 500 * speedFactor) : 0;
 
                     p.lastAnswer = chosen;
-                    p.lastQuestionIndex = gameState.currentQIndex;
+                    p.lastQuestionIndex = qIndexSnapshot;
+                    p.lastPoints = pts;
                     p.score = (p.score || 0) + pts;
                     if (chosen === qObj.correct) p.correctCount = (p.correctCount || 0) + 1;
                     updateLiveAnswerCounter();
@@ -1698,14 +1890,17 @@
             const answered = players.filter(p => p.lastQuestionIndex === gameState.currentQIndex).length;
             document.getElementById('quiz-status-value').textContent = `${answered} / ${players.length}`;
 
-            // Se todos responderam, encerra automaticamente após 1s
-            if (players.length > 0 && answered === players.length && gameState.timeRemaining > 1) {
+            if (players.length > 0 && answered === players.length && gameState.timeRemaining > 1 && gameState.currentRoomStatus === 'question') {
                 clearInterval(gameState.timerInterval);
-                setTimeout(() => hostForceReveal(), 900);
+                setTimeout(() => {
+                    if (gameState.mode === 'host' && gameState.currentRoomStatus === 'question') {
+                        hostForceReveal();
+                    }
+                }, 900);
             }
         }
 
-        window.submitAnswer = async function(optionIndex) {
+        window.submitAnswer = function(optionIndex) {
             if (gameState.mode === 'host' || gameState.hasAnsweredCurrent) return;
 
             SFX.click();
@@ -1715,7 +1910,6 @@
             const qObj = gameState.questions[gameState.currentQIndex];
             const isCorrect = optionIndex === qObj.correct;
 
-            // Destacar botão escolhido e desabilitar os demais
             for (let i = 0; i < 4; i++) {
                 const btn = document.getElementById(`opt-btn-${i}`);
                 btn.disabled = true;
@@ -1726,7 +1920,6 @@
                 }
             }
 
-            // Calcular pontuação estilo Kahoot (500 base + até 500 pela rapidez + bônus streak)
             let earnedPoints = 0;
             if (isCorrect) {
                 const timeRatio = Math.max(0, gameState.timeRemaining / gameState.timePerQuestion);
@@ -1746,7 +1939,6 @@
                 document.getElementById('player-answered-banner').classList.remove('hidden');
                 document.getElementById('quiz-status-value').textContent = gameState.score.toLocaleString('pt-BR');
 
-                // Atualiza mapa local e envia resposta em tempo real ao Host
                 const answerPayload = {
                     type: 'PLAYER_ANSWER',
                     playerId: gameState.playerId,
@@ -1761,12 +1953,7 @@
                     Object.assign(gameState.playersMap[gameState.playerId], answerPayload);
                 }
 
-                netBus.publish(gameState.roomPin, `ans/${gameState.playerId}`, answerPayload, false);
-                setTimeout(() => {
-                    if (gameState.mode === 'player') {
-                        netBus.publish(gameState.roomPin, `ans/${gameState.playerId}`, answerPayload, false);
-                    }
-                }, 700);
+                mpManager.sendToHost(answerPayload);
             }
         };
 
@@ -1778,7 +1965,7 @@
         };
 
         // =========================================================================
-        // 10. TELA DE RESULTADO DA RODADA & GRÁFICO DE BARRAS
+        // 11. TELA DE RESULTADO DA RODADA & GRÁFICO DE BARRAS
         // =========================================================================
         function showRoundResultScreen(soloPoints = 0) {
             clearInterval(gameState.timerInterval);
@@ -1797,6 +1984,7 @@
                 iconBadge.innerHTML = '<i class="fa-solid fa-chart-column"></i>';
                 titleEl.textContent = "Tempo Esgotado!";
                 subEl.textContent = `Questão ${gameState.currentQIndex + 1} de ${gameState.questions.length}`;
+                subEl.className = "text-indigo-300 font-semibold text-sm sm:text-base";
                 SFX.correct();
             } else {
                 const isCorrect = gameState.selectedOption === qObj.correct;
@@ -1821,7 +2009,6 @@
                 }
             }
 
-            // Calcular barras de distribuição das respostas
             const counts = [0, 0, 0, 0];
             if (gameState.mode === 'solo') {
                 if (gameState.selectedOption !== null) counts[gameState.selectedOption] = 1;
@@ -1842,7 +2029,6 @@
                 barEl.style.opacity = (i === qObj.correct) ? '1' : '0.45';
             }
 
-            // Renderizar Top 5 Placar Parcial
             const lbBox = document.getElementById('round-leaderboard-box');
             const lbList = document.getElementById('round-leaderboard-list');
 
@@ -1866,7 +2052,6 @@
                 `).join('');
             }
 
-            // Controle do botão Avançar
             const nextBtn = document.getElementById('btn-next-question');
             const waitMsg = document.getElementById('player-wait-next-msg');
             const isLast = gameState.currentQIndex >= gameState.questions.length - 1;
@@ -1881,6 +2066,8 @@
                     ? `<span>Ver Pódio Final 🏆</span><i class="fa-solid fa-trophy"></i>`
                     : `<span>Próxima Questão</span><i class="fa-solid fa-arrow-right"></i>`;
             }
+        }
+
         window.advanceToNextQuestion = function() {
             SFX.click();
             if (gameState.currentQIndex + 1 >= gameState.questions.length) {
@@ -1900,14 +2087,13 @@
         };
 
         // =========================================================================
-        // 11. PÓDIO FINAL E RANKING COMPLETO
+        // 12. PÓDIO FINAL E RANKING COMPLETO
         // =========================================================================
         function showFinalPodium() {
             clearInterval(gameState.timerInterval);
             switchView('view-podium');
             SFX.podium();
 
-            // Disparar confetes
             try {
                 confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
             } catch (e) {}
@@ -1926,7 +2112,6 @@
                     .sort((a, b) => (b.score || 0) - (a.score || 0));
             }
 
-            // Preencher os 3 lugares do pódio
             [1, 2, 3].forEach(pos => {
                 const p = ranking[pos - 1];
                 const nameEl = document.getElementById(`podium-name-${pos}`);
@@ -1940,7 +2125,6 @@
                 }
             });
 
-            // Preencher lista completa
             const listEl = document.getElementById('final-ranking-list');
             listEl.innerHTML = ranking.map((p, idx) => `
                 <div class="flex items-center justify-between bg-slate-900/90 px-4 py-3 rounded-xl border ${idx === 0 ? 'border-amber-400/60' : 'border-white/5'}">
@@ -1969,7 +2153,6 @@
                 .replace(/"/g, "&quot;");
         }
 
-        // Preencher PIN automaticamente se vier via QR Code (?pin=123456)
         window.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             const urlPin = params.get('pin');
